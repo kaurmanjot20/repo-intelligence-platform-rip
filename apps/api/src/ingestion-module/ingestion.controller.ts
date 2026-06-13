@@ -9,10 +9,11 @@ import { IngestionOrchestrator } from "./ingestion.orchestrator"
 const log = createLogger("IngestionController")
 
 interface StartIngestionDto {
-  sourceType: "github_url" | "zip_upload"
+  sourceType?: "github_url" | "zip_upload"
   sourceUrl?: string
   localPath?: string
   name?: string
+  workspaceId?: string
 }
 
 @Controller()
@@ -27,11 +28,12 @@ export class IngestionController {
   @HttpCode(HttpStatus.ACCEPTED)
   async startIngestion(@Body() dto: StartIngestionDto) {
     const name = dto.name ?? (dto.sourceUrl ? dto.sourceUrl.split("/").pop()! : "repository")
+    const resolvedType = dto.sourceType ?? (dto.sourceUrl ? "github_url" : "zip_upload")
 
     const repo = await this.repoRepo.create({
-      workspaceId: "local-workspace",
+      workspaceId: dto.workspaceId ?? "local-workspace",
       name,
-      sourceType: dto.sourceType === "github_url" ? "GITHUB_URL" : "ZIP_UPLOAD",
+      sourceType: resolvedType === "github_url" ? "GITHUB_URL" : "ZIP_UPLOAD",
       sourceUrl: dto.sourceUrl,
       localPath: dto.localPath ?? "",
     })
