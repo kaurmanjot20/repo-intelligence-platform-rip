@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id           String       @id @default(cuid())
+  name         String
+  createdAt    DateTime     @default(now())
+  users        User[]
+  repositories Repository[]
+}
+
+model User {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  email       String
+  name        String
+  createdAt   DateTime  @default(now())
+}
+
+model Repository {
+  id                   String               @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace            @relation(fields: [workspaceId], references: [id])
+  name                 String
+  description          String?
+  sourceType           SourceType
+  sourceUrl            String?
+  localPath            String
+  status               IngestionStatus      @default(PENDING)
+  errorMessage         String?
+  languages            String[]
+  fileCount            Int                  @default(0)
+  nodeCount            Int                  @default(0)
+  edgeCount            Int                  @default(0)
+  currentCommitHash    String?
+  defaultBranch        String?
+  parseDurationMs      Int?
+  graphBuildDurationMs Int?
+  graphVersion         Int                  @default(0)
+  graphBuiltAt         DateTime?
+  deletedAt            DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  parsedFiles          ParsedFile[]
+  ingestionJobs        IngestionJob[]
+  snapshots            RepositorySnapshot[]
+}
+
+model ParsedFile {
+  id              String     @id @default(cuid())
+  repositoryId    String
+  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  path            String
+  language        String
+  contentHash     String
+  importCount     Int        @default(0)
+  exportCount     Int        @default(0)
+  classCount      Int        @default(0)
+  functionCount   Int        @default(0)
+  astPath         String?
+  parserVersion   String
+  parsedAt        DateTime
+  parseDurationMs Int
+  createdAt       DateTime   @default(now())
+
+  @@unique([repositoryId, path])
+}
+
+model IngestionJob {
+  id           String     @id @default(cuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  status       JobStatus  @default(RUNNING)
+  startedAt    DateTime   @default(now())
+  completedAt  DateTime?
+  errorMessage String?
+  metadata     Json?
+}
+
+model RepositorySnapshot {
+  id           String     @id @default(cuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  commitHash   String
+  branch       String
+  createdAt    DateTime   @default(now())
+}
+
+enum SourceType {
+  GITHUB_URL
+  ZIP_UPLOAD
+}
+
+enum IngestionStatus {
+  PENDING
+  CLONING
+  PARSING
+  BUILDING_GRAPH
+  INDEXING
+  READY
+  ERROR
+}
+
+enum JobStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}

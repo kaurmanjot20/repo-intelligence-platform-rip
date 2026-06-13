@@ -1,0 +1,24 @@
+{
+  "name": "@rip/shared-utils",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --passWithNoTests",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@rip/types": "workspace:*",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "@rip/tsconfig": "workspace:*",
+    "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.5.0"
+  }
+}

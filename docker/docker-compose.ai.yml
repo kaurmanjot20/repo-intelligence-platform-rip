@@ -1,0 +1,17 @@
+# Phase 2: start with docker compose -f docker-compose.yml -f docker-compose.ai.yml up
+services:
+  ollama:
+    image: ollama/ollama
+    ports: ["11434:11434"]
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  ollama_data:

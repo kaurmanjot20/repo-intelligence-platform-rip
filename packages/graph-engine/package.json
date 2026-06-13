@@ -1,0 +1,7 @@
+{
+  "name": "@rip/graph-engine",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "scripts": { "build": "echo 'stub'" }
+}
