@@ -1,6 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* React Flow requires these */
-@import 'reactflow/dist/style.css';
