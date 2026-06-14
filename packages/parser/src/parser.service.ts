@@ -70,6 +70,28 @@ export class ParserService implements IParser {
     return this.parseFileWithId(filePath, language, "unknown")
   }
 
+  async parseFiles(
+    repositoryPath: string,
+    relativePaths: string[],
+    languages: SupportedLanguage[],
+    repositoryId: string,
+  ): Promise<ParsedFile[]> {
+    const results: ParsedFile[] = []
+    for (const relPath of relativePaths) {
+      const ext = path.extname(relPath).toLowerCase()
+      const language = EXTENSION_TO_LANGUAGE[ext]
+      if (!language || !languages.includes(language)) continue
+      const absPath = path.join(repositoryPath, relPath)
+      try {
+        const parsed = await this.parseFileWithId(absPath, language, repositoryId)
+        results.push(parsed)
+      } catch (err) {
+        log.warn("Failed to parse file", { relPath, error: (err as Error).message })
+      }
+    }
+    return results
+  }
+
   private async parseFileWithId(filePath: string, language: SupportedLanguage, repositoryId: string): Promise<ParsedFile> {
     const source = await fs.readFile(filePath, "utf-8")
 
