@@ -89,7 +89,8 @@ export class GraphEngine implements IGraphEngine {
          type: n.type,
          label: n.label,
          repositoryId: n.repositoryId,
-         metadataJson: n.metadataJson
+         metadataJson: n.metadataJson,
+         filePath: n.filePath
        }
        WITH node, n
        CALL apoc.create.addLabels(node, [n.type]) YIELD node AS labeled
@@ -101,9 +102,23 @@ export class GraphEngine implements IGraphEngine {
           label: n.label,
           repositoryId: n.repositoryId,
           metadataJson: JSON.stringify(n.metadata),
+          filePath: ((n.metadata as Record<string, unknown>).filePath
+            ?? (n.metadata as Record<string, unknown>).path
+            ?? '') as string,
         })),
       },
     )
+  }
+
+  async deleteNodesForFiles(repositoryId: string, filePaths: string[]): Promise<void> {
+    if (filePaths.length === 0) return
+    await this.neo4j.runQuery(
+      `MATCH (n {repositoryId: $repositoryId})
+       WHERE n.filePath IN $filePaths
+       DETACH DELETE n`,
+      { repositoryId, filePaths },
+    )
+    log.info('Deleted nodes for files', { repositoryId, count: filePaths.length })
   }
 
   private async mergeEdges(edges: GraphEdge[]): Promise<void> {
