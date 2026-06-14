@@ -88,4 +88,13 @@ export class ChunkRepo implements IChunkRepo {
   async countByRepository(repositoryId: string): Promise<number> {
     return this.db.chunk.count({ where: { repositoryId } })
   }
+
+  async deleteByFilePaths(repositoryId: string, filePaths: string[]): Promise<number> {
+    if (filePaths.length === 0) return 0
+    const { count } = await this.db.chunk.deleteMany({
+      where: { repositoryId, filePath: { in: filePaths } },
+    })
+    log.debug('Deleted chunks by file paths', { repositoryId, count })
+    return count
+  }
 }

@@ -71,4 +71,56 @@ export class ParsedFileRepo implements IParsedFileRepo {
       },
     }
   }
+
+  async findForDiff(repositoryId: string): Promise<{ path: string; contentHash: string }[]> {
+    const rows = await this.db.parsedFile.findMany({
+      where: { repositoryId },
+      select: { path: true, contentHash: true },
+    })
+    return rows
+  }
+
+  async bulkUpsert(files: ParsedFile[]): Promise<void> {
+    if (files.length === 0) return
+    const dataDir = process.env.DATA_DIR ?? './data/repositories'
+
+    for (const f of files) {
+      await this.db.parsedFile.upsert({
+        where: { repositoryId_path: { repositoryId: f.repositoryId, path: f.path } },
+        create: {
+          repositoryId: f.repositoryId,
+          path: f.path,
+          language: f.language,
+          contentHash: f.contentHash,
+          importCount: f.imports.length,
+          exportCount: f.exports.length,
+          classCount: f.classes.length,
+          functionCount: f.functions.length,
+          astPath: getAstPath(dataDir, f.repositoryId, f.path),
+          parserVersion: f.metadata.parserVersion,
+          parsedAt: f.metadata.parsedAt,
+          parseDurationMs: f.metadata.parseDurationMs,
+        },
+        update: {
+          language: f.language,
+          contentHash: f.contentHash,
+          importCount: f.imports.length,
+          exportCount: f.exports.length,
+          classCount: f.classes.length,
+          functionCount: f.functions.length,
+          astPath: getAstPath(dataDir, f.repositoryId, f.path),
+          parserVersion: f.metadata.parserVersion,
+          parsedAt: f.metadata.parsedAt,
+          parseDurationMs: f.metadata.parseDurationMs,
+        },
+      })
+    }
+  }
+
+  async bulkDelete(repositoryId: string, paths: string[]): Promise<void> {
+    if (paths.length === 0) return
+    await this.db.parsedFile.deleteMany({
+      where: { repositoryId, path: { in: paths } },
+    })
+  }
 }

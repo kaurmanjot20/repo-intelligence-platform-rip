@@ -152,6 +152,7 @@ enum IngestionStatus {
   BUILDING_GRAPH
   INDEXING
   READY
+  RE_INGESTING
   ERROR
 }
 

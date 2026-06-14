@@ -62,6 +62,7 @@ export class RepositoryRepo implements IRepositoryRepo {
         ...(stats.languages !== undefined && { languages: stats.languages }),
         ...(stats.chunkCount !== undefined && { chunkCount: stats.chunkCount }),
         ...(stats.indexedAt !== undefined && { indexedAt: stats.indexedAt }),
+        ...(stats.localPath !== undefined && { localPath: stats.localPath }),
       },
     })
   }
