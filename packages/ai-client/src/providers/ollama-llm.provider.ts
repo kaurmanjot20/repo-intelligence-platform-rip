@@ -11,7 +11,7 @@ export class OllamaLLMProvider implements LLMProvider {
   readonly model: string
 
   constructor(
-    model = process.env.OLLAMA_LLM_MODEL ?? 'qwen3:coder',
+    model = process.env.OLLAMA_LLM_MODEL ?? 'qwen2.5-coder',
     private readonly baseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434'
   ) {
     this.model = model
