@@ -1,2 +1,3 @@
-// Phase 2 — stub only. Import path reserved.
-export {}
+export { Chunker } from './chunker'
+export { Embedder } from './embedder'
+export { MemoryEngine } from './memory.engine'
