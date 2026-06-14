@@ -37,6 +37,8 @@ export interface Repository {
   graphBuildDurationMs?: number
   graphVersion: number
   graphBuiltAt?: Date
+  chunkCount?: number
+  indexedAt?: Date
   deletedAt?: Date
   createdAt: Date
   updatedAt: Date

@@ -31,7 +31,7 @@ export interface IIngestionService {
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 export interface IParser {
-  parseRepository(repositoryPath: string, languages: SupportedLanguage[]): Promise<ParsedFile[]>
+  parseRepository(repositoryPath: string, languages: SupportedLanguage[], repositoryId: string): Promise<ParsedFile[]>
   parseFile(filePath: string, language: SupportedLanguage): Promise<ParsedFile>
 }
 
@@ -70,6 +70,8 @@ export interface RepoStats {
   currentCommitHash?: string
   defaultBranch?: string
   languages?: string[]
+  chunkCount?: number
+  indexedAt?: Date
 }
 
 export interface IRepositoryRepo {
