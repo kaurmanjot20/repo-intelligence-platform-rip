@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@rip/types": "workspace:*",
-    "@rip/shared-utils": "workspace:*"
+    "@rip/shared-utils": "workspace:*",
+    "@rip/retrieval-engine": "workspace:*"
   },
   "devDependencies": {
     "@rip/tsconfig": "workspace:*",
