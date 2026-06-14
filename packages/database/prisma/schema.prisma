@@ -45,6 +45,10 @@ model Repository {
   graphBuildDurationMs Int?
   graphVersion         Int                  @default(0)
   graphBuiltAt         DateTime?
+  chunkCount           Int?
+  indexedAt            DateTime?
+  chunks               Chunk[]
+  chatSessions         ChatSession[]
   deletedAt            DateTime?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
@@ -91,6 +95,49 @@ model RepositorySnapshot {
   commitHash   String
   branch       String
   createdAt    DateTime   @default(now())
+}
+
+model Chunk {
+  id           String                      @id @default(cuid())
+  repositoryId String
+  nodeId       String
+  filePath     String
+  nodeType     String
+  name         String
+  content      String
+  startLine    Int
+  endLine      Int
+  embedding    Unsupported("vector(768)")?
+  createdAt    DateTime                    @default(now())
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId])
+  @@index([nodeId])
+  @@index([repositoryId, nodeId])
+}
+
+model ChatSession {
+  id           String        @id @default(cuid())
+  repositoryId String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  messages     ChatMessage[]
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  sessionId  String
+  role       String
+  content    String
+  references Json?
+  intent     String?
+  durationMs Int?
+  createdAt  DateTime    @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
 enum SourceType {
