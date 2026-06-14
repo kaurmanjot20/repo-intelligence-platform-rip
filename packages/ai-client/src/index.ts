@@ -1,2 +1,2 @@
-// Phase 2 — stub only. Import path reserved.
-export {}
+export { OllamaEmbeddingProvider } from './providers/ollama-embedding.provider'
+export { OllamaLLMProvider } from './providers/ollama-llm.provider'
