@@ -5,6 +5,8 @@ import type {
   GraphEdge,
   GraphSummary,
   NodeType,
+  CopilotAnswer,
+  CopilotReference,
 } from "@rip/types"
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1"
@@ -33,6 +35,8 @@ export interface CreateRepoResponse {
   jobId: string
 }
 
+export type { CopilotAnswer, CopilotReference }
+
 export const api = {
   repositories: {
     list: () => req<Repository[]>("/repositories"),
@@ -51,5 +55,16 @@ export const api = {
       return req<GraphNode[]>(`/repositories/${repoId}/graph/nodes${qs}`)
     },
     edges: (repoId: string) => req<GraphEdge[]>(`/repositories/${repoId}/graph/edges`),
+  },
+  copilot: {
+    ask: (repositoryId: string, question: string, sessionId?: string) =>
+      req<CopilotAnswer>(`/repositories/${repositoryId}/copilot/ask`, {
+        method: "POST",
+        body: JSON.stringify({ question, sessionId }),
+      }),
+    getMessages: (repositoryId: string, sessionId: string) =>
+      req<Array<{ role: string; content: string; references?: CopilotReference[]; createdAt: string }>>(
+        `/repositories/${repositoryId}/copilot/sessions/${sessionId}/messages`
+      ),
   },
 }
