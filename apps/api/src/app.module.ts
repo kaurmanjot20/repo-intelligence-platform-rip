@@ -2,31 +2,37 @@ import { Module } from "@nestjs/common"
 import { HealthController } from "./health/health.controller"
 import { IngestionController } from "./ingestion-module/ingestion.controller"
 import { IngestionOrchestrator } from "./ingestion-module/ingestion.orchestrator"
-import { RepositoryRepo, IngestionJobRepo, ParsedFileRepo } from "@rip/database"
+import { GraphController } from "./graph-module/graph.controller"
+import { RepositoryRepo, IngestionJobRepo, ParsedFileRepo, ChunkRepo, ChatRepo } from "@rip/database"
 import { IngestionService } from "@rip/ingestion"
-import type { IParser, IGraphEngine, GraphBuildResult } from "@rip/types"
+import { ParserService } from "@rip/parser"
+import { Neo4jClient, GraphEngine, GraphRepository } from "@rip/graph-engine"
+import { OllamaEmbeddingProvider, OllamaLLMProvider } from "@rip/ai-client"
+import { MemoryEngine } from "@rip/memory-engine"
 
-// Stubs — replaced in Sprint 3 and Sprint 4
-const parserStub: IParser = {
-  parseRepository: async () => [],
-  parseFile: async () => { throw new Error("Not implemented") },
-}
-const graphStub: IGraphEngine = {
-  buildGraph: async (): Promise<GraphBuildResult> => ({
-    repositoryId: "", nodesCreated: 0, edgesCreated: 0, durationMs: 0, warnings: [],
-  }),
-}
+const neo4jClient = new Neo4jClient()
+const chunkRepo = new ChunkRepo()
+const chatRepo = new ChatRepo()
+const ollamaEmbedding = new OllamaEmbeddingProvider()
+const ollamaLlm = new OllamaLLMProvider()
+const memoryEngine = new MemoryEngine(ollamaEmbedding, chunkRepo)
 
 @Module({
-  controllers: [HealthController, IngestionController],
+  controllers: [HealthController, IngestionController, GraphController],
   providers: [
     IngestionOrchestrator,
     { provide: "IRepositoryRepo", useClass: RepositoryRepo },
     { provide: "IIngestionJobRepo", useClass: IngestionJobRepo },
     { provide: "IParsedFileRepo", useClass: ParsedFileRepo },
     { provide: "IIngestionService", useClass: IngestionService },
-    { provide: "IParser", useValue: parserStub },
-    { provide: "IGraphEngine", useValue: graphStub },
+    { provide: "IParser", useClass: ParserService },
+    { provide: "IGraphEngine", useFactory: () => new GraphEngine(neo4jClient) },
+    { provide: "IGraphRepository", useFactory: () => new GraphRepository(neo4jClient) },
+    { provide: "IMemoryEngine", useValue: memoryEngine },
+    { provide: "IEmbeddingProvider", useValue: ollamaEmbedding },
+    { provide: "ILLMProvider", useValue: ollamaLlm },
+    { provide: "IChunkRepo", useValue: chunkRepo },
+    { provide: "IChatRepo", useValue: chatRepo },
   ],
 })
 export class AppModule {}

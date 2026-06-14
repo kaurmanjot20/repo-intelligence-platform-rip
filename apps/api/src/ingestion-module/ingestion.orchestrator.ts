@@ -1,7 +1,7 @@
 import { Injectable, Inject } from "@nestjs/common"
 import { createLogger } from "@rip/shared-utils"
 import type {
-  IIngestionService, IParser, IGraphEngine,
+  IIngestionService, IParser, IGraphEngine, IMemoryEngine,
   IRepositoryRepo, IIngestionJobRepo, IParsedFileRepo,
 } from "@rip/types"
 
@@ -13,6 +13,7 @@ export class IngestionOrchestrator {
     @Inject("IIngestionService") private readonly ingestionSvc: IIngestionService,
     @Inject("IParser") private readonly parser: IParser,
     @Inject("IGraphEngine") private readonly graphEngine: IGraphEngine,
+    @Inject("IMemoryEngine") private readonly memoryEngine: IMemoryEngine,
     @Inject("IRepositoryRepo") private readonly repoRepo: IRepositoryRepo,
     @Inject("IIngestionJobRepo") private readonly jobRepo: IIngestionJobRepo,
     @Inject("IParsedFileRepo") private readonly parsedFileRepo: IParsedFileRepo,
@@ -24,7 +25,7 @@ export class IngestionOrchestrator {
       const repo = await this.repoRepo.findById(repositoryId)
       if (!repo) throw new Error(`Repository ${repositoryId} not found`)
 
-      // Clone / extract
+      // 1. Clone / extract
       await this.repoRepo.updateStatus(repositoryId, "cloning")
       const ingested = repo.sourceType === "github_url"
         ? await this.ingestionSvc.ingestFromUrl(repo.sourceUrl!, repo.workspaceId)
@@ -37,16 +38,16 @@ export class IngestionOrchestrator {
         defaultBranch: ingested.defaultBranch,
       })
 
-      // Parse
+      // 2. Parse
       await this.repoRepo.updateStatus(repositoryId, "parsing")
       const t1 = Date.now()
-      const parsedFiles = await this.parser.parseRepository(ingested.localPath, ingested.languages)
+      const parsedFiles = await this.parser.parseRepository(ingested.localPath, ingested.languages, repositoryId)
       const parseDurationMs = Date.now() - t1
 
       await this.parsedFileRepo.bulkCreate(parsedFiles)
       await this.repoRepo.updateStats(repositoryId, { parseDurationMs })
 
-      // Build graph
+      // 3. Build graph
       await this.repoRepo.updateStatus(repositoryId, "building_graph")
       const graphResult = await this.graphEngine.buildGraph(repositoryId, parsedFiles)
 
@@ -57,6 +58,23 @@ export class IngestionOrchestrator {
         graphBuiltAt: new Date(),
         graphVersion: (repo.graphVersion ?? 0) + 1,
       })
+
+      // 4. Index memory (non-fatal — graph still valid if Ollama unavailable)
+      await this.repoRepo.updateStatus(repositoryId, "indexing")
+      try {
+        const t2 = Date.now()
+        const { chunksIndexed } = await this.memoryEngine.buildMemory(repositoryId, parsedFiles)
+        await this.repoRepo.updateStats(repositoryId, {
+          chunkCount: chunksIndexed,
+          indexedAt: new Date(),
+        })
+        log.info("Memory indexed", { repositoryId, chunksIndexed, ms: Date.now() - t2 })
+      } catch (memErr) {
+        log.warn("Memory indexing failed — copilot unavailable, graph still ready", {
+          repositoryId,
+          error: (memErr as Error).message,
+        })
+      }
 
       await this.repoRepo.updateStatus(repositoryId, "ready")
       await this.jobRepo.complete(jobId, {
