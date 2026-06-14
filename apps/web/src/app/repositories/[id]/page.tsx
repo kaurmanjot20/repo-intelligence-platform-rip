@@ -1,9 +1,10 @@
 "use client"
-import { use } from "react"
+import { use, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, RefreshCw } from "lucide-react"
+import { ArrowLeft, RefreshCw, MessageSquare, X } from "lucide-react"
 import { StatusBadge } from "../../../components/StatusBadge"
-import { GraphExplorer } from "../../../components/GraphExplorer"
+import { GraphExplorer, type GraphExplorerHandle } from "../../../components/GraphExplorer"
+import { CopilotPanel } from "../../../components/CopilotPanel"
 import { useRepository } from "../../../hooks/useRepositories"
 import { useGraphData, useGraphSummary } from "../../../hooks/useGraph"
 
@@ -12,6 +13,13 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
   const { repo, loading: repoLoading, error: repoError } = useRepository(id)
   const { summary } = useGraphSummary(repo?.status === "ready" ? id : null)
   const { nodes, edges, loading: graphLoading } = useGraphData(repo?.status === "ready" ? id : null)
+
+  const [copilotOpen, setCopilotOpen] = useState(false)
+  const graphRef = useRef<GraphExplorerHandle>(null)
+
+  const handleCitationClick = (nodeId: string) => {
+    graphRef.current?.focusNode(nodeId)
+  }
 
   if (repoLoading) {
     return (
@@ -26,6 +34,8 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
       </div>
     )
   }
+
+  const copilotAvailable = repo.status === "ready"
 
   return (
     <div className="flex flex-col h-screen">
@@ -56,22 +66,59 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
         {repo.status !== "ready" && repo.status !== "error" && (
           <div className="flex items-center gap-2 text-xs text-zinc-500 shrink-0">
             <RefreshCw size={12} className="animate-spin" />
-            Ingesting…
+            {repo.status === "indexing" ? "Indexing memory…" : "Ingesting…"}
           </div>
+        )}
+
+        {/* Copilot toggle */}
+        {copilotAvailable && (
+          <button
+            type="button"
+            onClick={() => setCopilotOpen(o => !o)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shrink-0 ${
+              copilotOpen
+                ? "bg-indigo-600 text-white"
+                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
+            }`}
+          >
+            {copilotOpen ? <X size={13} /> : <MessageSquare size={13} />}
+            {copilotOpen ? "Close" : "Copilot"}
+          </button>
         )}
       </header>
 
-      {/* Graph area */}
-      <div className="flex-1 relative overflow-hidden bg-zinc-950">
-        {repo.status === "error" ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2">
-            <p className="text-red-400 font-medium">Ingestion failed</p>
-            {repo.errorMessage && (
-              <p className="text-red-500 text-sm max-w-md text-center">{repo.errorMessage}</p>
-            )}
+      {/* Main area: graph + optional copilot panel */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Graph */}
+        <div
+          className="relative overflow-hidden bg-zinc-950 transition-all duration-200"
+          style={{ width: copilotOpen ? "65%" : "100%" }}
+        >
+          {repo.status === "error" ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <p className="text-red-400 font-medium">Ingestion failed</p>
+              {repo.errorMessage && (
+                <p className="text-red-500 text-sm max-w-md text-center">{repo.errorMessage}</p>
+              )}
+            </div>
+          ) : (
+            <GraphExplorer
+              ref={graphRef}
+              nodes={nodes}
+              edges={edges}
+              loading={graphLoading}
+            />
+          )}
+        </div>
+
+        {/* Copilot panel */}
+        {copilotOpen && (
+          <div className="w-[35%] shrink-0 overflow-hidden">
+            <CopilotPanel
+              repositoryId={id}
+              onCitationClick={handleCitationClick}
+            />
           </div>
-        ) : (
-          <GraphExplorer nodes={nodes} edges={edges} loading={graphLoading} />
         )}
       </div>
     </div>
