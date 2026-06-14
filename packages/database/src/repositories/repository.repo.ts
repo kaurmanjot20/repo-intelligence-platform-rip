@@ -60,6 +60,8 @@ export class RepositoryRepo implements IRepositoryRepo {
         ...(stats.currentCommitHash !== undefined && { currentCommitHash: stats.currentCommitHash }),
         ...(stats.defaultBranch !== undefined && { defaultBranch: stats.defaultBranch }),
         ...(stats.languages !== undefined && { languages: stats.languages }),
+        ...(stats.chunkCount !== undefined && { chunkCount: stats.chunkCount }),
+        ...(stats.indexedAt !== undefined && { indexedAt: stats.indexedAt }),
       },
     })
   }
@@ -93,6 +95,8 @@ export class RepositoryRepo implements IRepositoryRepo {
       graphBuildDurationMs: row.graphBuildDurationMs ?? undefined,
       graphVersion: row.graphVersion,
       graphBuiltAt: row.graphBuiltAt ?? undefined,
+      chunkCount: row.chunkCount ?? undefined,
+      indexedAt: row.indexedAt ?? undefined,
       deletedAt: row.deletedAt ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
