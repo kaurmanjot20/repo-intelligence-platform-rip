@@ -22,9 +22,24 @@ export interface IngestionResult {
   defaultBranch?: string
 }
 
+export interface DiffResult {
+  changedFiles: string[]
+  newFiles: string[]
+  deletedFiles: string[]
+  unchangedFiles: string[]
+}
+
+export interface IncrementalIngestionResult {
+  isReIngest: boolean
+  changedFiles: number
+  newFiles: number
+  deletedFiles: number
+  unchangedFiles: number
+}
+
 export interface IIngestionService {
-  ingestFromUrl(url: string, workspaceId: string): Promise<IngestionResult>
-  ingestFromZip(zipPath: string, workspaceId: string): Promise<IngestionResult>
+  ingestFromUrl(url: string, repositoryId: string): Promise<IngestionResult>
+  ingestFromZip(zipPath: string, repositoryId: string): Promise<IngestionResult>
   detectLanguages(repositoryPath: string): Promise<SupportedLanguage[]>
 }
 
@@ -33,12 +48,14 @@ export interface IIngestionService {
 export interface IParser {
   parseRepository(repositoryPath: string, languages: SupportedLanguage[], repositoryId: string): Promise<ParsedFile[]>
   parseFile(filePath: string, language: SupportedLanguage): Promise<ParsedFile>
+  parseFiles(repositoryPath: string, relativePaths: string[], languages: SupportedLanguage[], repositoryId: string): Promise<ParsedFile[]>
 }
 
 // ─── Graph ────────────────────────────────────────────────────────────────────
 
 export interface IGraphEngine {
   buildGraph(repositoryId: string, files: ParsedFile[]): Promise<GraphBuildResult>
+  deleteNodesForFiles(repositoryId: string, filePaths: string[]): Promise<void>
 }
 
 export interface IGraphRepository {
@@ -72,6 +89,7 @@ export interface RepoStats {
   languages?: string[]
   chunkCount?: number
   indexedAt?: Date
+  localPath?: string
 }
 
 export interface IRepositoryRepo {
@@ -87,6 +105,9 @@ export interface IParsedFileRepo {
   bulkCreate(files: ParsedFile[]): Promise<void>
   findByRepository(repositoryId: string): Promise<ParsedFile[]>
   findByPath(repositoryId: string, path: string): Promise<ParsedFile | null>
+  findForDiff(repositoryId: string): Promise<{ path: string; contentHash: string }[]>
+  bulkUpsert(files: ParsedFile[]): Promise<void>
+  bulkDelete(repositoryId: string, paths: string[]): Promise<void>
 }
 
 export interface IIngestionJobRepo {

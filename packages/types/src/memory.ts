@@ -53,6 +53,7 @@ export interface IChunkRepo {
   ): Promise<Array<Chunk & { similarity: number }>>
   deleteByRepository(repositoryId: string): Promise<void>
   countByRepository(repositoryId: string): Promise<number>
+  deleteByFilePaths(repositoryId: string, filePaths: string[]): Promise<number>
 }
 
 export interface IChatRepo {

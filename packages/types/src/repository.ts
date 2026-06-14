@@ -1,6 +1,7 @@
 export type IngestionStatus =
   | 'pending'
   | 'cloning'
+  | 're_ingesting'
   | 'parsing'
   | 'building_graph'
   | 'indexing'
