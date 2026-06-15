@@ -1,12 +1,14 @@
 import {
   Controller, Post, Get, Delete, Param, Body, Query,
-  HttpCode, HttpStatus, NotFoundException, Inject,
+  HttpCode, HttpStatus, NotFoundException, BadRequestException, Inject,
 } from "@nestjs/common"
-import { createLogger } from "@rip/shared-utils"
+import { randomBytes } from "crypto"
+import { createLogger, encryptToken } from "@rip/shared-utils"
 import type { IRepositoryRepo, IIngestionJobRepo } from "@rip/types"
 import { ingestionQueue } from "@rip/queue"
 
 const log = createLogger("IngestionController")
+const GITHUB_URL_RE = /^https:\/\/github\.com\//
 
 interface StartIngestionDto {
   sourceType?: "github_url" | "zip_upload"
@@ -14,6 +16,7 @@ interface StartIngestionDto {
   localPath?: string
   name?: string
   workspaceId?: string
+  githubToken?: string
 }
 
 @Controller()
@@ -29,12 +32,26 @@ export class IngestionController {
     const name = dto.name ?? (dto.sourceUrl ? dto.sourceUrl.split("/").pop()! : "repository")
     const resolvedType = dto.sourceType ?? (dto.sourceUrl ? "github_url" : "zip_upload")
 
+    let encryptedToken: string | undefined
+    if (dto.githubToken && resolvedType === "github_url") {
+      if (!dto.sourceUrl || !GITHUB_URL_RE.test(dto.sourceUrl)) {
+        throw new BadRequestException("githubToken may only be used with https://github.com/ URLs")
+      }
+      encryptedToken = encryptToken(dto.githubToken)
+    }
+
+    const webhookSecret = randomBytes(32).toString("hex")
+    const webhookSecretCreatedAt = new Date()
+
     const repo = await this.repoRepo.create({
       workspaceId: dto.workspaceId ?? "local-workspace",
       name,
       sourceType: resolvedType === "github_url" ? "GITHUB_URL" : "ZIP_UPLOAD",
       sourceUrl: dto.sourceUrl,
       localPath: dto.localPath ?? "",
+      githubToken: encryptedToken,
+      webhookSecret,
+      webhookSecretCreatedAt,
     })
 
     const job = await this.jobRepo.create(repo.id)
@@ -46,7 +63,7 @@ export class IngestionController {
     )
 
     log.info("Ingestion queued", { repositoryId: repo.id, jobId: job.id })
-    return { repositoryId: repo.id, jobId: job.id, status: "pending" }
+    return { repositoryId: repo.id, jobId: job.id, webhookSecret }
   }
 
   @Get("repositories")

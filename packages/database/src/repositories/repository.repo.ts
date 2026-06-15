@@ -4,7 +4,7 @@ import type {
   CreateRepositoryDto,
   RepoStats,
 } from '@rip/types'
-import type { Repository, IngestionStatus } from '@rip/types'
+import type { Repository, IngestionStatus, WebhookEventStatus } from '@rip/types'
 import { createLogger } from '@rip/shared-utils'
 
 const log = createLogger('RepositoryRepo')
@@ -20,6 +20,9 @@ export class RepositoryRepo implements IRepositoryRepo {
         sourceType: data.sourceType,
         sourceUrl: data.sourceUrl,
         localPath: data.localPath,
+        githubToken: data.githubToken,
+        webhookSecret: data.webhookSecret,
+        webhookSecretCreatedAt: data.webhookSecretCreatedAt,
       },
     })
     return this.toRepository(row)
@@ -74,6 +77,29 @@ export class RepositoryRepo implements IRepositoryRepo {
     })
   }
 
+  async findGithubToken(id: string): Promise<string | null> {
+    const row = await this.db.repository.findUnique({
+      where: { id },
+      select: { githubToken: true },
+    })
+    return row?.githubToken ?? null
+  }
+
+  async findWebhookSecret(id: string): Promise<string | null> {
+    const row = await this.db.repository.findUnique({
+      where: { id },
+      select: { webhookSecret: true },
+    })
+    return row?.webhookSecret ?? null
+  }
+
+  async updateWebhookStatus(id: string, status: WebhookEventStatus, at: Date): Promise<void> {
+    await this.db.repository.update({
+      where: { id },
+      data: { lastWebhookStatus: status as any, lastWebhookAt: at },
+    })
+  }
+
   private toRepository(row: any): Repository {
     return {
       id: row.id,
@@ -101,6 +127,14 @@ export class RepositoryRepo implements IRepositoryRepo {
       deletedAt: row.deletedAt ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      webhookConfigured: row.webhookSecret != null,
+      trackedBranch: row.trackedBranch ?? undefined,
+      syncStatus: row.lastWebhookAt && row.lastWebhookStatus
+        ? {
+            state: row.lastWebhookStatus as WebhookEventStatus,
+            updatedAt: (row.lastWebhookAt as Date).toISOString(),
+          }
+        : undefined,
     }
   }
 }
