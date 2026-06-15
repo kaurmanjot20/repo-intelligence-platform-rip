@@ -7,7 +7,7 @@ import { IngestionOrchestrator } from "./ingestion.orchestrator"
 
 const log = createLogger("IngestionWorkerService")
 
-const WORKER_CONCURRENCY = 2
+const WORKER_CONCURRENCY = 1
 
 @Injectable()
 export class IngestionWorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
