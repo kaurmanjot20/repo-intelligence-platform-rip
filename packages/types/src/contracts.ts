@@ -64,6 +64,8 @@ export interface IGraphRepository {
   getNodeWithRelationships(nodeId: string): Promise<NodeWithRelationships>
   getGraphSummary(repositoryId: string): Promise<GraphSummary>
   findPath(sourceId: string, targetId: string): Promise<GraphPath>
+  getNodesForFiles(repositoryId: string, filePaths: string[]): Promise<GraphNode[]>
+  getCallersOf(repositoryId: string, filePaths: string[]): Promise<Array<{ node: GraphNode; relationship: string }>>
 }
 
 // ─── Database Repositories ────────────────────────────────────────────────────
@@ -116,4 +118,45 @@ export interface IIngestionJobRepo {
   fail(id: string, error: string): Promise<void>
   findById(id: string): Promise<IngestionJob | null>
   updateProgress(id: string, progress: { step: string; percent: number }): Promise<void>
+}
+
+// ─── PR Analysis ──────────────────────────────────────────────────────────────
+
+export interface ImpactedNode {
+  nodeId: string
+  file: string
+  name: string
+  relationship: 'CALLS' | 'IMPORTS'
+}
+
+export interface PrAnalysisResultData {
+  id: string
+  repositoryId: string
+  prUrl?: string
+  baseSha?: string
+  headSha?: string
+  changedFiles: string[]
+  summary: string
+  impactedNodes: ImpactedNode[]
+  references: Array<{ nodeId: string; file: string; name: string }>
+  durationMs: number
+  createdAt: Date
+}
+
+export interface CreatePrAnalysisDto {
+  repositoryId: string
+  prUrl?: string
+  baseSha?: string
+  headSha?: string
+  changedFiles: string[]
+  summary: string
+  impactedNodes: ImpactedNode[]
+  references: Array<{ nodeId: string; file: string; name: string }>
+  durationMs: number
+}
+
+export interface IPrAnalysisResultRepo {
+  create(data: CreatePrAnalysisDto): Promise<PrAnalysisResultData>
+  findByRepository(repositoryId: string): Promise<PrAnalysisResultData[]>
+  findById(id: string): Promise<PrAnalysisResultData | null>
 }
