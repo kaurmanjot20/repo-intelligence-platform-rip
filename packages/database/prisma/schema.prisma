@@ -55,6 +55,7 @@ model Repository {
   parsedFiles          ParsedFile[]
   ingestionJobs        IngestionJob[]
   snapshots            RepositorySnapshot[]
+  prAnalysisResults    PrAnalysisResult[]
 }
 
 model ParsedFile {
@@ -138,6 +139,24 @@ model ChatMessage {
   createdAt  DateTime    @default(now())
 
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model PrAnalysisResult {
+  id             String   @id @default(cuid())
+  repositoryId   String
+  prUrl          String?
+  baseSha        String?
+  headSha        String?
+  changedFiles   String[]
+  summary        String
+  impactedNodes  Json
+  references     Json
+  durationMs     Int
+  createdAt      DateTime @default(now())
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId])
 }
 
 enum SourceType {
