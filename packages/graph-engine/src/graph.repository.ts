@@ -127,6 +127,35 @@ export class GraphRepository implements IGraphRepository {
 
     return { nodes, edges, length: edges.length }
   }
+
+  async getNodesForFiles(repositoryId: string, filePaths: string[]): Promise<GraphNode[]> {
+    if (filePaths.length === 0) return []
+    const result = await this.neo4j.runQuery(
+      `MATCH (n:Node {repositoryId: $repositoryId})
+       WHERE n.filePath IN $filePaths
+       RETURN n`,
+      { repositoryId, filePaths },
+    )
+    return result.records.map((r) => recordToNode(r.get("n")))
+  }
+
+  async getCallersOf(
+    repositoryId: string,
+    filePaths: string[],
+  ): Promise<Array<{ node: GraphNode; relationship: string }>> {
+    if (filePaths.length === 0) return []
+    const result = await this.neo4j.runQuery(
+      `MATCH (caller:Node)-[r:CALLS|IMPORTS]->(n:Node {repositoryId: $repositoryId})
+       WHERE n.filePath IN $filePaths
+         AND caller.repositoryId = $repositoryId
+       RETURN DISTINCT caller, type(r) AS rel`,
+      { repositoryId, filePaths },
+    )
+    return result.records.map((r) => ({
+      node: recordToNode(r.get("caller")),
+      relationship: r.get("rel") as string,
+    }))
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
