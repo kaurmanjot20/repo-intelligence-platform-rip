@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common"
 import { HealthController } from "./health/health.controller"
 import { IngestionController } from "./ingestion-module/ingestion.controller"
 import { IngestionOrchestrator } from "./ingestion-module/ingestion.orchestrator"
+import { IngestionWorkerService } from "./ingestion-module/ingestion.worker-service"
 import { GraphController } from "./graph-module/graph.controller"
 import { CopilotController } from "./copilot-module/copilot.controller"
 import { CopilotService } from "./copilot-module/copilot.service"
@@ -27,6 +28,7 @@ const contextBuilder = new ContextBuilder()
   controllers: [HealthController, IngestionController, GraphController, CopilotController],
   providers: [
     IngestionOrchestrator,
+    IngestionWorkerService,
     CopilotService,
     { provide: "IRepositoryRepo", useClass: RepositoryRepo },
     { provide: "IIngestionJobRepo", useClass: IngestionJobRepo },
