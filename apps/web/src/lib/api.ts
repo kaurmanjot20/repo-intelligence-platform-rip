@@ -37,6 +37,22 @@ export interface CreateRepoResponse {
 
 export type { CopilotAnswer, CopilotReference }
 
+export interface ImpactedNode {
+  nodeId: string
+  file: string
+  name: string
+  relationship: "CALLS" | "IMPORTS"
+}
+
+export interface PrAnalysisResult {
+  id: string
+  changedFiles: string[]
+  summary: string
+  impactedNodes: ImpactedNode[]
+  references: Array<{ nodeId: string; file: string; name: string }>
+  durationMs: number
+}
+
 export const api = {
   repositories: {
     list: () => req<Repository[]>("/repositories"),
@@ -66,5 +82,12 @@ export const api = {
       req<Array<{ role: string; content: string; references?: CopilotReference[]; createdAt: string }>>(
         `/repositories/${repositoryId}/copilot/sessions/${sessionId}/messages`
       ),
+  },
+  prAnalysis: {
+    analyze: (repositoryId: string, body: { prUrl?: string; baseSha?: string; headSha?: string }) =>
+      req<PrAnalysisResult>(`/repositories/${repositoryId}/pr-analysis`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   },
 }

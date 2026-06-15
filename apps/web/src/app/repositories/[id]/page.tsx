@@ -1,12 +1,15 @@
 "use client"
 import { use, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, RefreshCw, MessageSquare, X } from "lucide-react"
+import { ArrowLeft, RefreshCw, MessageSquare, X, GitPullRequest } from "lucide-react"
 import { StatusBadge } from "../../../components/StatusBadge"
 import { GraphExplorer, type GraphExplorerHandle } from "../../../components/GraphExplorer"
 import { CopilotPanel } from "../../../components/CopilotPanel"
 import { useRepository } from "../../../hooks/useRepositories"
 import { useGraphData, useGraphSummary } from "../../../hooks/useGraph"
+import { PrAnalysisModal } from "../../../components/PrAnalysisModal"
+import { PrAnalysisPanel } from "../../../components/PrAnalysisPanel"
+import type { PrAnalysisResult } from "../../../lib/api"
 
 export default function RepositoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -15,6 +18,8 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
   const { nodes, edges, loading: graphLoading } = useGraphData(repo?.status === "ready" ? id : null)
 
   const [copilotOpen, setCopilotOpen] = useState(false)
+  const [prModalOpen, setPrModalOpen] = useState(false)
+  const [prAnalysisResult, setPrAnalysisResult] = useState<PrAnalysisResult | null>(null)
   const graphRef = useRef<GraphExplorerHandle>(null)
 
   const handleCitationClick = (nodeId: string) => {
@@ -70,6 +75,18 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
+        {/* Analyze PR button */}
+        {copilotAvailable && (
+          <button
+            type="button"
+            onClick={() => setPrModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 transition-colors shrink-0"
+          >
+            <GitPullRequest size={13} />
+            Analyze PR
+          </button>
+        )}
+
         {/* Copilot toggle */}
         {copilotAvailable && (
           <button
@@ -92,7 +109,7 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
         {/* Graph */}
         <div
           className="relative overflow-hidden bg-zinc-950 transition-all duration-200"
-          style={{ width: copilotOpen ? "65%" : "100%" }}
+          style={{ width: (copilotOpen || prAnalysisResult) ? "65%" : "100%" }}
         >
           {repo.status === "error" ? (
             <div className="flex flex-col items-center justify-center h-full gap-2">
@@ -111,16 +128,34 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
           )}
         </div>
 
-        {/* Copilot panel */}
-        {copilotOpen && (
+        {/* Right panel: PR Analysis or Copilot */}
+        {(copilotOpen || prAnalysisResult) && (
           <div className="w-[35%] shrink-0 overflow-hidden">
-            <CopilotPanel
-              repositoryId={id}
-              onCitationClick={handleCitationClick}
-            />
+            {prAnalysisResult ? (
+              <PrAnalysisPanel
+                result={prAnalysisResult}
+                onClose={() => setPrAnalysisResult(null)}
+                onNodeClick={handleCitationClick}
+              />
+            ) : (
+              <CopilotPanel
+                repositoryId={id}
+                onCitationClick={handleCitationClick}
+              />
+            )}
           </div>
         )}
       </div>
+
+      <PrAnalysisModal
+        repositoryId={id}
+        isOpen={prModalOpen}
+        onClose={() => setPrModalOpen(false)}
+        onResult={(result) => {
+          setPrAnalysisResult(result)
+          setCopilotOpen(false)
+        }}
+      />
     </div>
   )
 }

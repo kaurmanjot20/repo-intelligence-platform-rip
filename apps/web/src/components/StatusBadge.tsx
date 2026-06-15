@@ -9,6 +9,7 @@ const COLORS: Record<IngestionStatus, string> = {
   indexing: "bg-cyan-900 text-cyan-300",
   ready: "bg-emerald-900 text-emerald-300",
   error: "bg-red-900 text-red-300",
+  re_ingesting: "bg-amber-900 text-amber-300",
 }
 
 const DOTS: Partial<Record<IngestionStatus, boolean>> = {
