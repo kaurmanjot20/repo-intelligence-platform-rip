@@ -33,6 +33,15 @@ export interface CopilotAnswer {
   intent: CopilotIntent
   sessionId: string
   durationMs: number
+  messageId: string
+}
+
+export interface CopilotMessageMetric {
+  id: string
+  durationMs: number | null
+  rating: number | null
+  content: string
+  createdAt: Date
 }
 
 export interface IMemoryEngine {
@@ -63,11 +72,13 @@ export interface IChatRepo {
     role: 'user' | 'assistant',
     content: string,
     references?: CopilotReference[]
-  ): Promise<void>
+  ): Promise<{ id: string }>
   getMessages(sessionId: string): Promise<Array<{
     role: 'user' | 'assistant'
     content: string
     references?: CopilotReference[]
     createdAt: Date
   }>>
+  rateMessage(messageId: string, rating: 1 | -1): Promise<void>
+  getAssistantMessages(repositoryId: string, limit: number): Promise<CopilotMessageMetric[]>
 }

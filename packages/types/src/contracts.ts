@@ -160,3 +160,44 @@ export interface IPrAnalysisResultRepo {
   findByRepository(repositoryId: string): Promise<PrAnalysisResultData[]>
   findById(id: string): Promise<PrAnalysisResultData | null>
 }
+
+// ─── Ingestion Metrics ────────────────────────────────────────────────────────
+
+export interface IngestionMetricData {
+  id: string
+  repositoryId: string
+  jobId: string
+  changedFiles: number
+  newFiles: number
+  deletedFiles: number
+  unchangedFiles: number
+  parseDurationMs: number
+  graphBuildDurationMs: number
+  embedDurationMs: number
+  totalDurationMs: number
+  chunkCount: number
+  nodeCount: number
+  edgeCount: number
+  recordedAt: Date
+}
+
+export interface CreateIngestionMetricDto {
+  repositoryId: string
+  jobId: string
+  changedFiles: number
+  newFiles: number
+  deletedFiles: number
+  unchangedFiles: number
+  parseDurationMs: number
+  graphBuildDurationMs: number
+  embedDurationMs: number
+  totalDurationMs: number
+  chunkCount: number
+  nodeCount: number
+  edgeCount: number
+}
+
+export interface IIngestionMetricRepo {
+  create(data: CreateIngestionMetricDto): Promise<IngestionMetricData>
+  findByRepository(repositoryId: string, limit: number): Promise<IngestionMetricData[]>
+}
