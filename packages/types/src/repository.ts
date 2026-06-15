@@ -8,6 +8,8 @@ export type IngestionStatus =
   | 'ready'
   | 'error'
 
+export type WebhookEventStatus = 'PENDING' | 'ACCEPTED' | 'PROCESSED' | 'SKIPPED' | 'FAILED'
+
 export type SupportedLanguage = 'typescript' | 'javascript' | 'python' | 'java'
 export type SourceType = 'github_url' | 'zip_upload'
 
@@ -43,6 +45,12 @@ export interface Repository {
   deletedAt?: Date
   createdAt: Date
   updatedAt: Date
+  webhookConfigured: boolean
+  trackedBranch?: string
+  syncStatus?: {
+    state: WebhookEventStatus
+    updatedAt: string
+  }
 }
 
 export interface IngestionJob {

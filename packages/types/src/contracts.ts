@@ -1,4 +1,4 @@
-import type { SupportedLanguage, IngestionStatus } from './repository'
+import type { SupportedLanguage, IngestionStatus, WebhookEventStatus } from './repository'
 import type { ParsedFile } from './parser'
 import type {
   GraphNode,
@@ -76,6 +76,9 @@ export interface CreateRepositoryDto {
   sourceType: 'GITHUB_URL' | 'ZIP_UPLOAD'
   sourceUrl?: string
   localPath: string
+  githubToken?: string          // AES-256-GCM ciphertext (v1: prefix)
+  webhookSecret?: string
+  webhookSecretCreatedAt?: Date
 }
 
 export interface RepoStats {
@@ -101,6 +104,9 @@ export interface IRepositoryRepo {
   updateStatus(id: string, status: IngestionStatus, error?: string): Promise<void>
   updateStats(id: string, stats: RepoStats): Promise<void>
   softDelete(id: string): Promise<void>
+  findGithubToken(id: string): Promise<string | null>
+  findWebhookSecret(id: string): Promise<string | null>
+  updateWebhookStatus(id: string, status: WebhookEventStatus, at: Date): Promise<void>
 }
 
 export interface IParsedFileRepo {
@@ -200,4 +206,42 @@ export interface CreateIngestionMetricDto {
 export interface IIngestionMetricRepo {
   create(data: CreateIngestionMetricDto): Promise<IngestionMetricData>
   findByRepository(repositoryId: string, limit: number): Promise<IngestionMetricData[]>
+}
+
+// ─── Credential Resolver ──────────────────────────────────────────────────────
+
+export interface IRepositoryCredentialResolver {
+  getGithubToken(repositoryId: string): Promise<string | undefined>
+  getCloneUrl(repositoryId: string): Promise<string>
+}
+
+// ─── Webhook Events ───────────────────────────────────────────────────────────
+
+export interface WebhookEventData {
+  id: string
+  repositoryId: string
+  eventType: string
+  deliveryId: string
+  receivedAt: Date
+  processedAt?: Date
+  status: WebhookEventStatus
+  payloadHash: string
+  errorMessage?: string
+}
+
+export interface CreateWebhookEventDto {
+  repositoryId: string
+  eventType: string
+  deliveryId: string
+  payloadHash: string
+}
+
+export interface IWebhookEventRepo {
+  create(data: CreateWebhookEventDto): Promise<WebhookEventData>
+  findByDeliveryId(deliveryId: string): Promise<WebhookEventData | null>
+  updateStatus(
+    id: string,
+    status: WebhookEventStatus,
+    opts?: { errorMessage?: string; processedAt?: Date },
+  ): Promise<void>
 }
