@@ -1,7 +1,7 @@
 "use client"
 import { use, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, RefreshCw, MessageSquare, X, GitPullRequest } from "lucide-react"
+import { ArrowLeft, RefreshCw, MessageSquare, X, GitPullRequest, BarChart2 } from "lucide-react"
 import { StatusBadge } from "../../../components/StatusBadge"
 import { GraphExplorer, type GraphExplorerHandle } from "../../../components/GraphExplorer"
 import { CopilotPanel } from "../../../components/CopilotPanel"
@@ -85,6 +85,17 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
             <GitPullRequest size={13} />
             Analyze PR
           </button>
+        )}
+
+        {/* Benchmarks link */}
+        {copilotAvailable && (
+          <Link
+            href={`/repositories/${id}/benchmarks`}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 transition-colors shrink-0"
+          >
+            <BarChart2 size={13} />
+            Benchmarks
+          </Link>
         )}
 
         {/* Copilot toggle */}

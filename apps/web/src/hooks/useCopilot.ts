@@ -4,6 +4,7 @@ import { api } from "../lib/api"
 import type { CopilotReference } from "@rip/types"
 
 export interface CopilotMessage {
+  id?: string
   role: "user" | "assistant"
   content: string
   references?: CopilotReference[]
@@ -27,6 +28,7 @@ export function useCopilot(repositoryId: string) {
         setMessages(prev => [
           ...prev,
           {
+            id: answer.messageId,
             role: "assistant",
             content: answer.answer,
             references: answer.references,

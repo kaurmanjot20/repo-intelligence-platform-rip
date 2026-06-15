@@ -1,7 +1,9 @@
 "use client"
 import { useRef, useEffect, useState, type FormEvent } from "react"
+import { ThumbsUp, ThumbsDown } from "lucide-react"
 import { useCopilot } from "../hooks/useCopilot"
 import { CopilotCitationChip } from "./CopilotCitationChip"
+import { api } from "../lib/api"
 import type { CopilotReference } from "@rip/types"
 
 interface Props {
@@ -18,6 +20,7 @@ const EXAMPLE_QUESTIONS = [
 export function CopilotPanel({ repositoryId, onCitationClick }: Props) {
   const { messages, isLoading, ask } = useCopilot(repositoryId)
   const [input, setInput] = useState("")
+  const [ratings, setRatings] = useState<Record<string, 1 | -1>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,6 +38,15 @@ export function CopilotPanel({ repositoryId, onCitationClick }: Props) {
   const handleExample = (q: string) => {
     if (isLoading) return
     ask(q)
+  }
+
+  const handleRate = async (messageId: string, rating: 1 | -1) => {
+    setRatings((r) => ({ ...r, [messageId]: rating }))
+    try {
+      await api.copilot.rateMessage(repositoryId, messageId, rating)
+    } catch {
+      // optimistic — leave in place even on error
+    }
   }
 
   return (
@@ -94,6 +106,34 @@ export function CopilotPanel({ repositoryId, onCitationClick }: Props) {
                     ))}
                   </div>
                 )}
+              {msg.role === "assistant" && msg.id && (
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleRate(msg.id!, 1)}
+                    className={`transition-colors ${
+                      ratings[msg.id] === 1
+                        ? "text-emerald-400"
+                        : "text-zinc-600 hover:text-emerald-400"
+                    }`}
+                    aria-label="Thumbs up"
+                  >
+                    <ThumbsUp size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRate(msg.id!, -1)}
+                    className={`transition-colors ${
+                      ratings[msg.id] === -1
+                        ? "text-red-400"
+                        : "text-zinc-600 hover:text-red-400"
+                    }`}
+                    aria-label="Thumbs down"
+                  >
+                    <ThumbsDown size={12} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
