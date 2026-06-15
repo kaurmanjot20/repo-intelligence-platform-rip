@@ -10,6 +10,9 @@ import { PrAnalysisController } from "./pr-analysis-module/pr-analysis.controlle
 import { PrAnalysisService } from "./pr-analysis-module/pr-analysis.service.js"
 import { GithubClient } from "./pr-analysis-module/github.client.js"
 import { PrAnalysisResultRepo } from "@rip/database"
+import { BenchmarkController } from "./benchmark-module/benchmark.controller.js"
+import { BenchmarkService } from "./benchmark-module/benchmark.service.js"
+import { IngestionMetricRepo } from "@rip/database"
 import { RepositoryRepo, IngestionJobRepo, ParsedFileRepo, ChunkRepo, ChatRepo } from "@rip/database"
 import { IngestionService } from "@rip/ingestion"
 import { ParserService } from "@rip/parser"
@@ -29,7 +32,7 @@ const vectorRefiner = new VectorRefiner(chunkRepo, ollamaEmbedding)
 const contextBuilder = new ContextBuilder()
 
 @Module({
-  controllers: [HealthController, IngestionController, GraphController, CopilotController, PrAnalysisController],
+  controllers: [HealthController, IngestionController, GraphController, CopilotController, PrAnalysisController, BenchmarkController],
   providers: [
     IngestionOrchestrator,
     IngestionWorkerService,
@@ -37,6 +40,8 @@ const contextBuilder = new ContextBuilder()
     PrAnalysisService,
     GithubClient,
     { provide: "IPrAnalysisResultRepo", useClass: PrAnalysisResultRepo },
+    BenchmarkService,
+    { provide: "IIngestionMetricRepo", useClass: IngestionMetricRepo },
     { provide: "IRepositoryRepo", useClass: RepositoryRepo },
     { provide: "IIngestionJobRepo", useClass: IngestionJobRepo },
     { provide: "IParsedFileRepo", useClass: ParsedFileRepo },

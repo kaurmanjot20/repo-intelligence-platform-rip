@@ -1,5 +1,5 @@
-import { Controller, Post, Get, Body, Param, BadRequestException } from "@nestjs/common"
-import { CopilotService } from "./copilot.service"
+import { Controller, Post, Get, Body, Param, BadRequestException, HttpCode, HttpStatus } from "@nestjs/common"
+import { CopilotService } from "./copilot.service.js"
 
 interface AskDto {
   question: string
@@ -22,5 +22,14 @@ export class CopilotController {
   @Get("sessions/:sessionId/messages")
   async getMessages(@Param("sessionId") sessionId: string) {
     return this.copilotService.getMessages(sessionId)
+  }
+
+  @Post("messages/:messageId/rate")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async rateMessage(
+    @Param("messageId") messageId: string,
+    @Body() dto: { rating: 1 | -1 },
+  ) {
+    await this.copilotService.rateMessage(messageId, dto.rating)
   }
 }

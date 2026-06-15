@@ -56,6 +56,7 @@ model Repository {
   ingestionJobs        IngestionJob[]
   snapshots            RepositorySnapshot[]
   prAnalysisResults    PrAnalysisResult[]
+  ingestionMetrics     IngestionMetric[]
 }
 
 model ParsedFile {
@@ -137,6 +138,7 @@ model ChatMessage {
   intent     String?
   durationMs Int?
   createdAt  DateTime    @default(now())
+  rating     Int?
 
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
@@ -157,6 +159,29 @@ model PrAnalysisResult {
   repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
 
   @@index([repositoryId])
+}
+
+model IngestionMetric {
+  id                   String   @id @default(cuid())
+  repositoryId         String
+  jobId                String   @unique
+  changedFiles         Int      @default(0)
+  newFiles             Int      @default(0)
+  deletedFiles         Int      @default(0)
+  unchangedFiles       Int      @default(0)
+  parseDurationMs      Int
+  graphBuildDurationMs Int
+  embedDurationMs      Int
+  totalDurationMs      Int
+  chunkCount           Int
+  nodeCount            Int
+  edgeCount            Int
+  recordedAt           DateTime @default(now())
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId])
+  @@index([recordedAt])
 }
 
 enum SourceType {

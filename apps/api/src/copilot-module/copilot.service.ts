@@ -63,4 +63,8 @@ export class CopilotService {
   async getMessages(sessionId: string) {
     return this.chatRepo.getMessages(sessionId)
   }
+
+  async rateMessage(messageId: string, rating: 1 | -1): Promise<void> {
+    await this.chatRepo.rateMessage(messageId, rating)
+  }
 }
