@@ -12,22 +12,21 @@ export interface PrFile {
 export class GithubClient {
   private readonly baseUrl = "https://api.github.com"
 
-  private get headers(): Record<string, string> {
+  private buildHeaders(token?: string): Record<string, string> {
+    const authToken = token ?? process.env.GITHUB_TOKEN
     return {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
-      ...(process.env.GITHUB_TOKEN
-        ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
-        : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     }
   }
 
-  async getFilesForPr(prUrl: string): Promise<PrFile[]> {
+  async getFilesForPr(prUrl: string, token?: string): Promise<PrFile[]> {
     const { owner, repo, prNumber } = this.parsePrUrl(prUrl)
     log.info("Fetching PR files", { owner, repo, prNumber })
     const res = await fetch(
       `${this.baseUrl}/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
-      { headers: this.headers },
+      { headers: this.buildHeaders(token) },
     )
     if (!res.ok) {
       const body = await res.text()
@@ -40,12 +39,13 @@ export class GithubClient {
     sourceUrl: string,
     baseSha: string,
     headSha: string,
+    token?: string,
   ): Promise<PrFile[]> {
     const { owner, repo } = this.parseRepoUrl(sourceUrl)
     log.info("Fetching commit diff", { owner, repo, baseSha, headSha })
     const res = await fetch(
       `${this.baseUrl}/repos/${owner}/${repo}/compare/${baseSha}...${headSha}`,
-      { headers: this.headers },
+      { headers: this.buildHeaders(token) },
     )
     if (!res.ok) {
       const body = await res.text()

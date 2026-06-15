@@ -20,7 +20,7 @@ export class IngestionService implements IIngestionService {
 
   async ingestFromUrl(url: string, repositoryId: string): Promise<IngestionResult> {
     const stablePath = path.join(this.dataDir, repositoryId, "source")
-    log.info("Ingesting from URL", { url, stablePath })
+    log.info("Ingesting from URL", { repositoryId, stablePath })
 
     let localPath: string
     let commitHash: string

@@ -20,6 +20,7 @@ import { Neo4jClient, GraphEngine, GraphRepository } from "@rip/graph-engine"
 import { OllamaEmbeddingProvider, OllamaLLMProvider } from "@rip/ai-client"
 import { MemoryEngine, ContextBuilder } from "@rip/memory-engine"
 import { GraphRetriever, VectorRefiner } from "@rip/retrieval-engine"
+import { PatCredentialResolver } from "./ingestion-module/pat-credential-resolver.js"
 
 const neo4jClient = new Neo4jClient()
 const chunkRepo = new ChunkRepo()
@@ -36,6 +37,8 @@ const contextBuilder = new ContextBuilder()
   providers: [
     IngestionOrchestrator,
     IngestionWorkerService,
+    PatCredentialResolver,
+    { provide: "IRepositoryCredentialResolver", useClass: PatCredentialResolver },
     CopilotService,
     PrAnalysisService,
     GithubClient,

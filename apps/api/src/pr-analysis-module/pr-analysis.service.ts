@@ -5,7 +5,7 @@ import {
   BadRequestException,
   UnprocessableEntityException,
 } from "@nestjs/common"
-import { createLogger } from "@rip/shared-utils"
+import { createLogger, decryptToken } from "@rip/shared-utils"
 import type {
   IRepositoryRepo,
   IGraphRepository,
@@ -48,24 +48,35 @@ export class PrAnalysisService {
     if (!repo) throw new NotFoundException(`Repository ${repositoryId} not found`)
 
     // 1. Fetch changed files from GitHub
+    // Decrypt per-repo PAT, pass to GitHub client, then zeroize
     let changedFiles: string[]
-    if (dto.prUrl) {
-      const files = await this.githubClient.getFilesForPr(dto.prUrl)
-      changedFiles = files.filter((f) => f.status !== "removed").map((f) => f.filename)
-    } else if (dto.baseSha && dto.headSha) {
-      if (!repo.sourceUrl) {
-        throw new UnprocessableEntityException(
-          "baseSha/headSha requires a GitHub-sourced repository with a sourceUrl",
-        )
+    {
+      let prToken: string | undefined
+      try {
+        const encrypted = await this.repoRepo.findGithubToken(repositoryId)
+        prToken = encrypted ? decryptToken(encrypted) : undefined
+        if (dto.prUrl) {
+          const files = await this.githubClient.getFilesForPr(dto.prUrl, prToken)
+          changedFiles = files.filter((f) => f.status !== "removed").map((f) => f.filename)
+        } else if (dto.baseSha && dto.headSha) {
+          if (!repo.sourceUrl) {
+            throw new UnprocessableEntityException(
+              "baseSha/headSha requires a GitHub-sourced repository with a sourceUrl",
+            )
+          }
+          const files = await this.githubClient.getFilesForCommits(
+            repo.sourceUrl,
+            dto.baseSha,
+            dto.headSha,
+            prToken,
+          )
+          changedFiles = files.filter((f) => f.status !== "removed").map((f) => f.filename)
+        } else {
+          throw new BadRequestException("Provide prUrl or both baseSha and headSha")
+        }
+      } finally {
+        prToken = undefined
       }
-      const files = await this.githubClient.getFilesForCommits(
-        repo.sourceUrl,
-        dto.baseSha,
-        dto.headSha,
-      )
-      changedFiles = files.filter((f) => f.status !== "removed").map((f) => f.filename)
-    } else {
-      throw new BadRequestException("Provide prUrl or both baseSha and headSha")
     }
 
     log.info("PR files fetched", { repositoryId, count: changedFiles.length })

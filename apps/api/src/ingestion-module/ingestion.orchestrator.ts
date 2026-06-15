@@ -1,5 +1,5 @@
 import { Injectable, Inject } from "@nestjs/common"
-import { createLogger } from "@rip/shared-utils"
+import { createLogger, buildAuthenticatedUrl } from "@rip/shared-utils"
 import type {
   IIngestionService,
   IParser,
@@ -9,6 +9,7 @@ import type {
   IParsedFileRepo,
   IIngestionMetricRepo,
   DiffResult,
+  IRepositoryCredentialResolver,
 } from "@rip/types"
 import type { IMemoryEngine, IChunkRepo } from "@rip/types"
 import { DiffStrategy } from "@rip/ingestion"
@@ -27,6 +28,7 @@ export class IngestionOrchestrator {
     @Inject("IParsedFileRepo") private readonly parsedFileRepo: IParsedFileRepo,
     @Inject("IChunkRepo") private readonly chunkRepo: IChunkRepo,
     @Inject("IIngestionMetricRepo") private readonly metricRepo: IIngestionMetricRepo,
+    @Inject("IRepositoryCredentialResolver") private readonly credentialResolver: IRepositoryCredentialResolver,
   ) {}
 
   async startIngestion(repositoryId: string, jobId: string): Promise<void> {
@@ -43,8 +45,20 @@ export class IngestionOrchestrator {
       const cloneStatus = isReIngest ? "re_ingesting" : "cloning"
       await this.jobRepo.updateProgress(jobId, { step: 'cloning', percent: 5 })
       await this.repoRepo.updateStatus(repositoryId, cloneStatus)
+      // Build authenticated URL — token is zeroized in finally block
+      let token: string | undefined
+      let ingestUrl = repo.sourceUrl ?? ""
+      try {
+        if (repo.sourceType === "github_url") {
+          token = await this.credentialResolver.getGithubToken(repositoryId)
+          ingestUrl = token ? buildAuthenticatedUrl(repo.sourceUrl!, token) : repo.sourceUrl!
+        }
+      } finally {
+        token = undefined
+      }
+      // Never log ingestUrl (may contain embedded PAT)
       const ingested = repo.sourceType === "github_url"
-        ? await this.ingestionSvc.ingestFromUrl(repo.sourceUrl!, repositoryId)
+        ? await this.ingestionSvc.ingestFromUrl(ingestUrl, repositoryId)
         : await this.ingestionSvc.ingestFromZip(repo.localPath, repositoryId)
 
       await this.repoRepo.updateStats(repositoryId, {
