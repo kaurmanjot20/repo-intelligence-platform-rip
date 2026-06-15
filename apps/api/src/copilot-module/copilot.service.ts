@@ -53,11 +53,11 @@ export class CopilotService {
     }))
 
     const durationMs = Date.now() - t0
-    await this.chatRepo.addMessage(resolvedSessionId, "assistant", answer, references)
+    const { id: messageId } = await this.chatRepo.addMessage(resolvedSessionId, "assistant", answer, references)
 
     log.info("Copilot answered", { repositoryId, intent, durationMs, refCount: references.length })
 
-    return { answer, references, intent, sessionId: resolvedSessionId, durationMs }
+    return { answer, references, intent, sessionId: resolvedSessionId, durationMs, messageId }
   }
 
   async getMessages(sessionId: string) {
