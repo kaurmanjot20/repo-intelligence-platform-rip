@@ -39,6 +39,7 @@ export class IngestionOrchestrator {
 
       // 1. Clone / pull
       const cloneStatus = isReIngest ? "re_ingesting" : "cloning"
+      await this.jobRepo.updateProgress(jobId, { step: 'cloning', percent: 5 })
       await this.repoRepo.updateStatus(repositoryId, cloneStatus)
       const ingested = repo.sourceType === "github_url"
         ? await this.ingestionSvc.ingestFromUrl(repo.sourceUrl!, repositoryId)
@@ -53,6 +54,7 @@ export class IngestionOrchestrator {
       })
 
       // 2. Compute diff or treat everything as new (first ingest)
+      await this.jobRepo.updateProgress(jobId, { step: 'diffing', percent: 15 })
       let diff: DiffResult
       if (isReIngest) {
         const diffStrategy = new DiffStrategy(this.parsedFileRepo)
@@ -72,6 +74,7 @@ export class IngestionOrchestrator {
       }
 
       // 4. Parse only changed+new files (or all on first ingest)
+      await this.jobRepo.updateProgress(jobId, { step: 'parsing', percent: 25 })
       await this.repoRepo.updateStatus(repositoryId, "parsing")
       const t1 = Date.now()
       let parsedFiles
@@ -102,6 +105,7 @@ export class IngestionOrchestrator {
       }
 
       // 6. Build graph for new/changed files only (or all on first ingest)
+      await this.jobRepo.updateProgress(jobId, { step: 'building_graph', percent: 60 })
       await this.repoRepo.updateStatus(repositoryId, "building_graph")
       const t2 = Date.now()
       const graphResult = await this.graphEngine.buildGraph(repositoryId, parsedFiles)
@@ -116,6 +120,7 @@ export class IngestionOrchestrator {
       })
 
       // 7. Index memory for new/changed files only (non-fatal — graph is still valid)
+      await this.jobRepo.updateProgress(jobId, { step: 'indexing', percent: 80 })
       await this.repoRepo.updateStatus(repositoryId, "indexing")
       let embedDurationMs = 0
       try {
