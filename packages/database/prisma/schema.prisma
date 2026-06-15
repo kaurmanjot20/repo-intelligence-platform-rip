@@ -56,7 +56,14 @@ model Repository {
   ingestionJobs        IngestionJob[]
   snapshots            RepositorySnapshot[]
   prAnalysisResults    PrAnalysisResult[]
-  ingestionMetrics     IngestionMetric[]
+  ingestionMetrics       IngestionMetric[]
+  githubToken            String?  // AES-256-GCM ciphertext — application MUST encrypt before storing
+  trackedBranch          String?
+  webhookSecret          String?  // HMAC secret — random 32-byte hex, not user-provided
+  webhookSecretCreatedAt DateTime?
+  lastWebhookAt          DateTime?
+  lastWebhookStatus      WebhookEventStatus?
+  webhookEvents          WebhookEvent[]
 }
 
 model ParsedFile {
@@ -184,6 +191,21 @@ model IngestionMetric {
   @@index([recordedAt])
 }
 
+model WebhookEvent {
+  id           String             @id @default(cuid())
+  repositoryId String
+  repository   Repository         @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  eventType    String
+  deliveryId   String             @unique
+  receivedAt   DateTime           @default(now())
+  processedAt  DateTime?
+  status       WebhookEventStatus @default(PENDING)
+  payloadHash  String
+  errorMessage String?
+
+  @@index([repositoryId])
+}
+
 enum SourceType {
   GITHUB_URL
   ZIP_UPLOAD
@@ -203,5 +225,13 @@ enum IngestionStatus {
 enum JobStatus {
   RUNNING
   COMPLETED
+  FAILED
+}
+
+enum WebhookEventStatus {
+  PENDING
+  ACCEPTED
+  PROCESSED
+  SKIPPED
   FAILED
 }
