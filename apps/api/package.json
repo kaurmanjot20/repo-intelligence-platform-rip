@@ -20,8 +20,13 @@
     "@rip/retrieval-engine": "workspace:*",
     "@rip/ingestion": "workspace:*",
     "@rip/parser": "workspace:*",
+    "@rip/queue": "workspace:*",
     "@rip/shared-utils": "workspace:*",
     "@rip/types": "workspace:*",
+    "bullmq": "^5.0.0",
+    "ioredis": "5.10.1",
+    "@bull-board/api": "^5.0.0",
+    "@bull-board/express": "^5.0.0",
     "dotenv": "^16.4.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0"

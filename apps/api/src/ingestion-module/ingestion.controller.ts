@@ -4,7 +4,7 @@ import {
 } from "@nestjs/common"
 import { createLogger } from "@rip/shared-utils"
 import type { IRepositoryRepo, IIngestionJobRepo } from "@rip/types"
-import { IngestionOrchestrator } from "./ingestion.orchestrator"
+import { ingestionQueue } from "@rip/queue"
 
 const log = createLogger("IngestionController")
 
@@ -21,7 +21,6 @@ export class IngestionController {
   constructor(
     @Inject("IRepositoryRepo") private readonly repoRepo: IRepositoryRepo,
     @Inject("IIngestionJobRepo") private readonly jobRepo: IIngestionJobRepo,
-    private readonly orchestrator: IngestionOrchestrator,
   ) {}
 
   @Post("repositories")
@@ -40,10 +39,13 @@ export class IngestionController {
 
     const job = await this.jobRepo.create(repo.id)
 
-    // Fire-and-forget — replaced by BullMQ in Phase 2
-    setImmediate(() => this.orchestrator.startIngestion(repo.id, job.id))
+    await ingestionQueue.add(
+      "ingest",
+      { repositoryId: repo.id, jobId: job.id, triggeredBy: "api" },
+      { attempts: 3, backoff: { type: "exponential", delay: 5000 } },
+    )
 
-    log.info("Ingestion started", { repositoryId: repo.id, jobId: job.id })
+    log.info("Ingestion queued", { repositoryId: repo.id, jobId: job.id })
     return { repositoryId: repo.id, jobId: job.id, status: "pending" }
   }
 
