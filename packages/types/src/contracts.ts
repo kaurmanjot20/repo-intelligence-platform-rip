@@ -115,4 +115,5 @@ export interface IIngestionJobRepo {
   complete(id: string, metadata: Record<string, unknown>): Promise<void>
   fail(id: string, error: string): Promise<void>
   findById(id: string): Promise<IngestionJob | null>
+  updateProgress(id: string, progress: { step: string; percent: number }): Promise<void>
 }

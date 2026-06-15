@@ -29,6 +29,13 @@ export class IngestionJobRepo implements IIngestionJobRepo {
     return row ? this.toJob(row) : null
   }
 
+  async updateProgress(id: string, progress: { step: string; percent: number }): Promise<void> {
+    await this.db.ingestionJob.update({
+      where: { id },
+      data: { metadata: progress as any },
+    })
+  }
+
   private toJob(row: any): IngestionJob {
     return {
       id: row.id,
