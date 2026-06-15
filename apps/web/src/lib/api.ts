@@ -53,6 +53,32 @@ export interface PrAnalysisResult {
   durationMs: number
 }
 
+export interface IngestionMetricData {
+  id: string
+  repositoryId: string
+  jobId: string
+  changedFiles: number
+  newFiles: number
+  deletedFiles: number
+  unchangedFiles: number
+  parseDurationMs: number
+  graphBuildDurationMs: number
+  embedDurationMs: number
+  totalDurationMs: number
+  chunkCount: number
+  nodeCount: number
+  edgeCount: number
+  recordedAt: string
+}
+
+export interface CopilotMessageMetric {
+  id: string
+  durationMs: number | null
+  rating: number | null
+  content: string
+  createdAt: string
+}
+
 export const api = {
   repositories: {
     list: () => req<Repository[]>("/repositories"),
@@ -79,9 +105,14 @@ export const api = {
         body: JSON.stringify({ question, sessionId }),
       }),
     getMessages: (repositoryId: string, sessionId: string) =>
-      req<Array<{ role: string; content: string; references?: CopilotReference[]; createdAt: string }>>(
+      req<Array<{ id: string; role: string; content: string; references?: CopilotReference[]; createdAt: string }>>(
         `/repositories/${repositoryId}/copilot/sessions/${sessionId}/messages`
       ),
+    rateMessage: (repositoryId: string, messageId: string, rating: 1 | -1) =>
+      req<void>(`/repositories/${repositoryId}/copilot/messages/${messageId}/rate`, {
+        method: "POST",
+        body: JSON.stringify({ rating }),
+      }),
   },
   prAnalysis: {
     analyze: (repositoryId: string, body: { prUrl?: string; baseSha?: string; headSha?: string }) =>
@@ -89,5 +120,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  },
+  benchmarks: {
+    ingestion: (repositoryId: string) =>
+      req<{ metrics: IngestionMetricData[] }>(`/repositories/${repositoryId}/benchmarks/ingestion`),
+    copilot: (repositoryId: string) =>
+      req<{ messages: CopilotMessageMetric[] }>(`/repositories/${repositoryId}/benchmarks/copilot`),
   },
 }
