@@ -7,6 +7,7 @@ import type {
   IRepositoryRepo,
   IIngestionJobRepo,
   IParsedFileRepo,
+  IIngestionMetricRepo,
   DiffResult,
 } from "@rip/types"
 import type { IMemoryEngine, IChunkRepo } from "@rip/types"
@@ -25,6 +26,7 @@ export class IngestionOrchestrator {
     @Inject("IIngestionJobRepo") private readonly jobRepo: IIngestionJobRepo,
     @Inject("IParsedFileRepo") private readonly parsedFileRepo: IParsedFileRepo,
     @Inject("IChunkRepo") private readonly chunkRepo: IChunkRepo,
+    @Inject("IIngestionMetricRepo") private readonly metricRepo: IIngestionMetricRepo,
   ) {}
 
   async startIngestion(repositoryId: string, jobId: string): Promise<void> {
@@ -123,9 +125,11 @@ export class IngestionOrchestrator {
       await this.jobRepo.updateProgress(jobId, { step: 'indexing', percent: 80 })
       await this.repoRepo.updateStatus(repositoryId, "indexing")
       let embedDurationMs = 0
+      let chunksIndexed = 0
       try {
         const t3 = Date.now()
-        const { chunksIndexed } = await this.memoryEngine.buildMemory(repositoryId, parsedFiles)
+        const result = await this.memoryEngine.buildMemory(repositoryId, parsedFiles)
+        chunksIndexed = result.chunksIndexed
         embedDurationMs = Date.now() - t3
         await this.repoRepo.updateStats(repositoryId, {
           chunkCount: chunksIndexed,
@@ -160,6 +164,26 @@ export class IngestionOrchestrator {
       }
 
       await this.jobRepo.complete(jobId, metadata)
+      // Write ingestion metric for benchmarks dashboard (non-fatal if it fails)
+      try {
+        await this.metricRepo.create({
+          repositoryId,
+          jobId,
+          changedFiles: isReIngest ? diff.changedFiles.length : 0,
+          newFiles: isReIngest ? diff.newFiles.length : parsedFiles.length,
+          deletedFiles: isReIngest ? diff.deletedFiles.length : 0,
+          unchangedFiles: isReIngest ? diff.unchangedFiles.length : 0,
+          parseDurationMs,
+          graphBuildDurationMs,
+          embedDurationMs,
+          totalDurationMs,
+          chunkCount: chunksIndexed,
+          nodeCount: graphResult.nodesCreated,
+          edgeCount: graphResult.edgesCreated,
+        })
+      } catch (metricErr) {
+        log.warn("Failed to write ingestion metric", { error: (metricErr as Error).message })
+      }
       log.info("Ingestion complete", { repositoryId, isReIngest, ms: totalDurationMs })
 
     } catch (err) {
