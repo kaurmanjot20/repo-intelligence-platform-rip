@@ -1,7 +1,7 @@
 "use client"
 import { use, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, RefreshCw, MessageSquare, X, GitPullRequest, BarChart2 } from "lucide-react"
+import { ArrowLeft, RefreshCw, MessageSquare, X, GitPullRequest, BarChart2, Webhook } from "lucide-react"
 import { StatusBadge } from "../../../components/StatusBadge"
 import { GraphExplorer, type GraphExplorerHandle } from "../../../components/GraphExplorer"
 import { CopilotPanel } from "../../../components/CopilotPanel"
@@ -10,6 +10,45 @@ import { useGraphData, useGraphSummary } from "../../../hooks/useGraph"
 import { PrAnalysisModal } from "../../../components/PrAnalysisModal"
 import { PrAnalysisPanel } from "../../../components/PrAnalysisPanel"
 import type { PrAnalysisResult } from "../../../lib/api"
+
+function SyncStatusBadge({ syncStatus, webhookConfigured }: {
+  syncStatus?: { state: string; updatedAt: string }
+  webhookConfigured?: boolean
+}) {
+  if (!webhookConfigured) return null
+
+  if (!syncStatus) {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-blue-400">
+        <Webhook size={11} />
+        Auto-sync ready
+      </span>
+    )
+  }
+
+  const relativeTime = (iso: string) => {
+    const diff = Math.round((Date.now() - new Date(iso).getTime()) / 1000)
+    if (diff < 60) return `${diff}s ago`
+    if (diff < 3600) return `${Math.round(diff / 60)}m ago`
+    return `${Math.round(diff / 3600)}h ago`
+  }
+
+  const cfg: Record<string, { dot: string; label: string; text: string }> = {
+    PROCESSED: { dot: "bg-emerald-400", label: "Auto-sync", text: "text-emerald-400" },
+    ACCEPTED:  { dot: "bg-amber-400 animate-pulse", label: "Syncing…", text: "text-amber-400" },
+    PENDING:   { dot: "bg-amber-400 animate-pulse", label: "Pending…", text: "text-amber-400" },
+    SKIPPED:   { dot: "bg-zinc-400", label: "Ignored", text: "text-zinc-400" },
+    FAILED:    { dot: "bg-red-400", label: "Sync failed", text: "text-red-400" },
+  }
+
+  const c = cfg[syncStatus.state] ?? cfg["SKIPPED"]!
+  return (
+    <span className={`flex items-center gap-1.5 text-xs ${c.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+      {c.label} · {relativeTime(syncStatus.updatedAt)}
+    </span>
+  )
+}
 
 export default function RepositoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -65,8 +104,16 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
             <span>{summary.totalNodes.toLocaleString()} nodes</span>
             <span>{summary.totalEdges.toLocaleString()} edges</span>
             {repo.fileCount && <span>{repo.fileCount} files</span>}
+            {(repo.trackedBranch ?? repo.defaultBranch) && (
+              <span>Branch: {repo.trackedBranch ?? repo.defaultBranch}</span>
+            )}
           </div>
         )}
+
+        <SyncStatusBadge
+          syncStatus={repo.syncStatus}
+          webhookConfigured={repo.webhookConfigured}
+        />
 
         {repo.status !== "ready" && repo.status !== "error" && (
           <div className="flex items-center gap-2 text-xs text-zinc-500 shrink-0">
