@@ -28,11 +28,13 @@ export interface CreateRepoPayload {
   name: string
   sourceUrl: string
   workspaceId: string
+  githubToken?: string
 }
 
 export interface CreateRepoResponse {
   repositoryId: string
   jobId: string
+  webhookSecret: string
 }
 
 export type { CopilotAnswer, CopilotReference }
