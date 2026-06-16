@@ -23,7 +23,11 @@ export function useRepositories() {
 
   useEffect(() => { load() }, [load])
 
-  const createRepo = useCallback(async (payload: CreateRepoPayload) => {
+  const createRepo = useCallback(async (payload: CreateRepoPayload): Promise<{
+    repositoryId: string
+    jobId: string
+    webhookSecret: string
+  }> => {
     const result = await api.repositories.create(payload)
     await load()
     return result
