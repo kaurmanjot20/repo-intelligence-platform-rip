@@ -13,7 +13,9 @@ import { PrAnalysisResultRepo } from "@rip/database"
 import { BenchmarkController } from "./benchmark-module/benchmark.controller.js"
 import { BenchmarkService } from "./benchmark-module/benchmark.service.js"
 import { IngestionMetricRepo } from "@rip/database"
-import { RepositoryRepo, IngestionJobRepo, ParsedFileRepo, ChunkRepo, ChatRepo } from "@rip/database"
+import { RepositoryRepo, IngestionJobRepo, ParsedFileRepo, ChunkRepo, ChatRepo, WebhookEventRepo } from "@rip/database"
+import { WebhookController } from "./webhook-module/webhook.controller.js"
+import { WebhookService } from "./webhook-module/webhook.service.js"
 import { IngestionService } from "@rip/ingestion"
 import { ParserService } from "@rip/parser"
 import { Neo4jClient, GraphEngine, GraphRepository } from "@rip/graph-engine"
@@ -33,7 +35,7 @@ const vectorRefiner = new VectorRefiner(chunkRepo, ollamaEmbedding)
 const contextBuilder = new ContextBuilder()
 
 @Module({
-  controllers: [HealthController, IngestionController, GraphController, CopilotController, PrAnalysisController, BenchmarkController],
+  controllers: [HealthController, IngestionController, GraphController, CopilotController, PrAnalysisController, BenchmarkController, WebhookController],
   providers: [
     IngestionOrchestrator,
     IngestionWorkerService,
@@ -45,6 +47,8 @@ const contextBuilder = new ContextBuilder()
     { provide: "IPrAnalysisResultRepo", useClass: PrAnalysisResultRepo },
     BenchmarkService,
     { provide: "IIngestionMetricRepo", useClass: IngestionMetricRepo },
+    WebhookService,
+    { provide: "IWebhookEventRepo", useClass: WebhookEventRepo },
     { provide: "IRepositoryRepo", useClass: RepositoryRepo },
     { provide: "IIngestionJobRepo", useClass: IngestionJobRepo },
     { provide: "IParsedFileRepo", useClass: ParsedFileRepo },
