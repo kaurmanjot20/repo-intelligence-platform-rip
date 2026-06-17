@@ -10,6 +10,7 @@ import type {
   IIngestionMetricRepo,
   DiffResult,
   IRepositoryCredentialResolver,
+  IWebhookEventRepo,
 } from "@rip/types"
 import type { IMemoryEngine, IChunkRepo } from "@rip/types"
 import { DiffStrategy } from "@rip/ingestion"
@@ -29,9 +30,10 @@ export class IngestionOrchestrator {
     @Inject("IChunkRepo") private readonly chunkRepo: IChunkRepo,
     @Inject("IIngestionMetricRepo") private readonly metricRepo: IIngestionMetricRepo,
     @Inject("IRepositoryCredentialResolver") private readonly credentialResolver: IRepositoryCredentialResolver,
+    @Inject("IWebhookEventRepo") private readonly webhookEventRepo: IWebhookEventRepo,
   ) {}
 
-  async startIngestion(repositoryId: string, jobId: string): Promise<void> {
+  async startIngestion(repositoryId: string, jobId: string, webhookEventId?: string): Promise<void> {
     const t0 = Date.now()
     try {
       const repo = await this.repoRepo.findById(repositoryId)
@@ -200,11 +202,32 @@ export class IngestionOrchestrator {
       }
       log.info("Ingestion complete", { repositoryId, isReIngest, ms: totalDurationMs })
 
+      // Mark webhook delivery as fully processed (non-fatal)
+      if (webhookEventId) {
+        try {
+          await this.webhookEventRepo.updateStatus(webhookEventId, "PROCESSED", {
+            processedAt: new Date(),
+          })
+          await this.repoRepo.updateWebhookStatus(repositoryId, "PROCESSED", new Date())
+        } catch (whErr) {
+          log.warn("Failed to update webhook event status", { error: (whErr as Error).message })
+        }
+      }
+
     } catch (err) {
       const msg = (err as Error).message
       log.error("Ingestion failed", { repositoryId, error: msg })
       await this.repoRepo.updateStatus(repositoryId, "error", msg)
       await this.jobRepo.fail(jobId, msg)
+      if (webhookEventId) {
+        try {
+          await this.webhookEventRepo.updateStatus(webhookEventId, "FAILED", {
+            errorMessage: msg,
+            processedAt: new Date(),
+          })
+          await this.repoRepo.updateWebhookStatus(repositoryId, "FAILED", new Date())
+        } catch { /* best-effort */ }
+      }
     }
   }
 }

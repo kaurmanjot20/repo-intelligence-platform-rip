@@ -20,7 +20,7 @@ export class IngestionWorkerService implements OnApplicationBootstrap, OnApplica
       "ingestion",
       async (job) => {
         try {
-          await this.orchestrator.startIngestion(job.data.repositoryId, job.data.jobId)
+          await this.orchestrator.startIngestion(job.data.repositoryId, job.data.jobId, job.data.webhookEventId)
         } catch (err) {
           const msg = (err as Error).message
           if (
