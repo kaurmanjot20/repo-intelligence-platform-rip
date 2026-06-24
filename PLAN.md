@@ -79,6 +79,22 @@
    Add service/integration tests for `apps/api` modules (ingestion orchestrator, copilot,
    pr-analysis, benchmark, webhook) and basic web component tests.
 
+6. **Make Copilot answers more helpful & beginner-friendly.** _(parked — do later)_
+   Current answers are terse and read like an expert wrote them; the system prompt forces
+   "3–6 sentences max / no speculation". Goal: descriptive, teaching-style answers a beginner
+   can act on. Decided behavior: **teach + guide** — when something isn't in the code, say so,
+   then explain the concept in plain terms, where it would normally live, and what the repo
+   *does* have, explicitly labeling general knowledge vs. code-derived. Three coordinated
+   changes (do together — they depend on each other):
+   - Rewrite the system prompt in `packages/memory-engine/src/context-builder.ts` (plain
+     language, define jargon, light structure: summary → details → where to look / what to try).
+   - Render markdown in `apps/web/src/components/CopilotPanel.tsx` (currently plain
+     `whitespace-pre-wrap`, so any structure shows as raw `**`/`#`). Needs a markdown lib
+     (e.g. `react-markdown`).
+   - Raise `COPILOT_MAX_TOKENS` (600 → ~900–1000) in `copilot.service.ts` for room to elaborate.
+   Fast follow (separate effort): filter near-empty/trivial chunks (e.g. empty `__init__.py`)
+   out of retrieval so context + citations are meaningful.
+
 ---
 
 ## ⏳ What's Remaining (full backlog)
