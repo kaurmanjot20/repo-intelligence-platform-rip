@@ -240,4 +240,4 @@ intent detector, crypto util, and the webhook service. Run a single package with
 
 ## License
 
-No license has been specified yet. Add a `LICENSE` file to declare usage terms.
+[MIT](./LICENSE) © Manjot Kaur

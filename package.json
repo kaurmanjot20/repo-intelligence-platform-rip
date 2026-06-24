@@ -1,6 +1,7 @@
 {
   "name": "rip",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@9.4.0",
   "scripts": {
     "build": "turbo build",
