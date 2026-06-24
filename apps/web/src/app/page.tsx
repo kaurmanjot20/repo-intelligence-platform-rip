@@ -1,6 +1,7 @@
 "use client"
 import { IngestionForm } from "../components/IngestionForm"
 import { RepositoryCard } from "../components/RepositoryCard"
+import { WorkspaceStats } from "../components/WorkspaceStats"
 import { useRepositories } from "../hooks/useRepositories"
 
 export default function DashboardPage() {
@@ -12,6 +13,8 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-zinc-100">Repository Intelligence Platform</h1>
         <p className="text-zinc-400 mt-1 text-sm">Ingest a GitHub repository to explore its architecture graph.</p>
       </div>
+
+      {!loading && !error && <WorkspaceStats repos={repos} />}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Ingest Repository</h2>

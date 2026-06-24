@@ -90,7 +90,7 @@
 - [x] Metadata side panel (Imports / Contains / Used By) on node click, with navigation.
 - [x] Node search bar (live results, click to focus).
 - [x] Interactive node filter bar (legend toggles type visibility).
-- [ ] Workspace stats / richer dashboard on home page.
+- [x] Workspace stats summary on home page (repos/files/nodes/edges).
 - [ ] (Optional) decomposed routes from the original spec (`/repositories/new`,
       `/repositories/[id]/explore`) — currently consolidated; only do if structure matters.
 
