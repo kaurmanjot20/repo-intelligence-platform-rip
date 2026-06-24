@@ -5,6 +5,7 @@ import type {
   GraphEdge,
   GraphPath,
   GraphSummary,
+  NodeWithRelationships,
   NodeType,
   CopilotAnswer,
   CopilotReference,
@@ -100,6 +101,8 @@ export const api = {
       return req<GraphNode[]>(`/repositories/${repoId}/graph/nodes${qs}`)
     },
     edges: (repoId: string) => req<GraphEdge[]>(`/repositories/${repoId}/graph/edges`),
+    node: (repoId: string, nodeId: string) =>
+      req<NodeWithRelationships>(`/repositories/${repoId}/graph/nodes/${encodeURIComponent(nodeId)}`),
     path: (repoId: string, from: string, to: string) =>
       req<GraphPath>(
         `/repositories/${repoId}/graph/path?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`

@@ -1,6 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
-import { Flag, Route, X } from "lucide-react"
+import { Flag, Network, Route, X } from "lucide-react"
 import type { GraphNode, GraphEdge, NodeType } from "@rip/types"
 
 type Tab = "imports" | "contains" | "usedBy"
@@ -15,8 +15,12 @@ interface Props {
   nodes: GraphNode[]
   edges: GraphEdge[]
   pathFrom: string | null
+  lazy?: boolean
+  expanded?: boolean
+  expanding?: boolean
   onClose: () => void
   onNavigate: (nodeId: string) => void
+  onExpand?: (nodeId: string) => void
   onSetPathStart: (nodeId: string) => void
   onFindPath: (toId: string) => void
 }
@@ -26,8 +30,12 @@ export function MetadataSidePanel({
   nodes,
   edges,
   pathFrom,
+  lazy = false,
+  expanded = false,
+  expanding = false,
   onClose,
   onNavigate,
+  onExpand,
   onSetPathStart,
   onFindPath,
 }: Props) {
@@ -134,6 +142,20 @@ export function MetadataSidePanel({
           </ul>
         )}
       </div>
+
+      {lazy && onExpand && (
+        <div className="px-3 py-2 border-t border-zinc-800">
+          <button
+            type="button"
+            onClick={() => onExpand(node.id)}
+            disabled={expanding}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 transition-colors disabled:opacity-50"
+          >
+            <Network size={12} />
+            {expanding ? "Expanding…" : expanded ? "Re-expand neighbors" : "Expand neighbors"}
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-2 px-3 py-2 border-t border-zinc-800">
         {pathFrom === node.id ? (

@@ -110,6 +110,10 @@ interface Props {
   nodes: GraphNode[]
   edges: GraphEdge[]
   loading: boolean
+  lazy?: boolean
+  expandedIds?: Set<string>
+  expanding?: boolean
+  onExpand?: (nodeId: string) => void
 }
 
 interface PathState {
@@ -119,7 +123,10 @@ interface PathState {
 }
 
 export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
-  function GraphExplorer({ repositoryId, nodes, edges, loading }, ref) {
+  function GraphExplorer(
+    { repositoryId, nodes, edges, loading, lazy = false, expandedIds, expanding = false, onExpand },
+    ref
+  ) {
     const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null)
     const [highlightedId, setHighlightedId] = useState<string | null>(null)
     const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -182,6 +189,10 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     )
 
     const handleNodeClick: NodeMouseHandler = (_, node) => setSelectedId(node.id)
+
+    const handleNodeDoubleClick: NodeMouseHandler = (_, node) => {
+      if (lazy && onExpand) onExpand(node.id)
+    }
 
     const navigateTo = (nodeId: string) => {
       setSelectedId(nodeId)
@@ -246,6 +257,7 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
           edges={toFlowEdges(visibleEdges, path?.edgeIds ?? null)}
           onInit={setRfInstance}
           onNodeClick={handleNodeClick}
+          onNodeDoubleClick={handleNodeDoubleClick}
           onPaneClick={() => setSelectedId(null)}
           fitView
           fitViewOptions={{ padding: 0.2 }}
@@ -297,6 +309,14 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
           )}
         </div>
 
+        {/* Lazy-mode hint */}
+        {lazy && (
+          <div className="absolute bottom-14 left-4 flex items-center gap-1.5 text-[11px] text-zinc-500">
+            <Route size={11} className="text-zinc-500" />
+            {expanding ? "Loading subtree…" : "Large graph — double-click a node to expand"}
+          </div>
+        )}
+
         {/* Legend / type filter */}
         <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 max-w-xs">
           {presentTypes.map((type) => {
@@ -346,8 +366,12 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
             nodes={nodes}
             edges={edges}
             pathFrom={pathFrom}
+            lazy={lazy}
+            expanded={expandedIds?.has(selectedNode.id) ?? false}
+            expanding={expanding}
             onClose={() => setSelectedId(null)}
             onNavigate={navigateTo}
+            onExpand={onExpand}
             onSetPathStart={(id) => { setPathFrom(id); setPath(null); setPathError(null) }}
             onFindPath={(toId) => { if (pathFrom) void findPath(pathFrom, toId) }}
           />

@@ -54,7 +54,8 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params)
   const { repo, loading: repoLoading, error: repoError } = useRepository(id)
   const { summary } = useGraphSummary(repo?.status === "ready" ? id : null)
-  const { nodes, edges, loading: graphLoading } = useGraphData(repo?.status === "ready" ? id : null)
+  const { nodes, edges, loading: graphLoading, lazy, expandNode, expandedIds, expanding } =
+    useGraphData(repo?.status === "ready" ? id : null, summary)
 
   const [copilotOpen, setCopilotOpen] = useState(false)
   const [prModalOpen, setPrModalOpen] = useState(false)
@@ -183,6 +184,10 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
               nodes={nodes}
               edges={edges}
               loading={graphLoading}
+              lazy={lazy}
+              expandedIds={expandedIds}
+              expanding={expanding}
+              onExpand={expandNode}
             />
           )}
         </div>

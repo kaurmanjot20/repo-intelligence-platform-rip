@@ -108,7 +108,7 @@
 
 ### Known-deferred (from notes.md — intentional, not bugs)
 - [ ] Authentication / JWT (currently `local-user` placeholder).
-- [ ] Lazy graph loading / drill-down into subtrees for large graphs (>2000 nodes load
-      root-level only today).
+- [x] Lazy graph loading / drill-down: graphs over 2000 nodes load root-level only and
+      expand subtrees on double-click or via the side panel.
 - [x] Graph path highlighting in the UI (pick start + target from the side panel, path
       highlighted via `/graph/path`).
