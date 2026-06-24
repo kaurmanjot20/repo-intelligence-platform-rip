@@ -1,6 +1,8 @@
 "use client"
 import {
   forwardRef,
+  useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -13,6 +15,7 @@ import ReactFlow, {
   MiniMap,
   type Node,
   type Edge,
+  type NodeChange,
   type NodeMouseHandler,
   type ReactFlowInstance,
   BackgroundVariant,
@@ -58,6 +61,7 @@ function gridPositions(graphNodes: GraphNode[]): Map<string, XYPosition> {
 function toFlowNodes(
   graphNodes: GraphNode[],
   positions: Map<string, XYPosition>,
+  dragged: Map<string, XYPosition>,
   highlightedId: string | null,
   pathNodeIds: Set<string> | null,
   focusNodeIds: Set<string> | null
@@ -71,7 +75,8 @@ function toFlowNodes(
         : focusNodeIds !== null && !focusNodeIds.has(n.id)
     return {
       id: n.id,
-      position: positions.get(n.id) ?? { x: 0, y: 0 },
+      // A dragged position, once set, wins over the computed layout.
+      position: dragged.get(n.id) ?? positions.get(n.id) ?? { x: 0, y: 0 },
       data: { label: n.label, type: n.type },
       style: {
         background: TYPE_COLORS[n.type] ?? "#374151",
@@ -171,6 +176,8 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     const [pathFrom, setPathFrom] = useState<string | null>(null)
     const [path, setPath] = useState<PathState | null>(null)
     const [pathError, setPathError] = useState<string | null>(null)
+    // Positions the user has dragged nodes to; these override the computed layout.
+    const [dragged, setDragged] = useState<Map<string, XYPosition>>(new Map())
     const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const presentTypes = useMemo(
@@ -191,7 +198,7 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
       return edges.filter((e) => ids.has(e.sourceId) && ids.has(e.targetId))
     }, [edges, visibleNodes])
 
-    // Hierarchical layout, recomputed only when the visible graph changes.
+    // Force-directed layout, recomputed only when the visible graph changes.
     // Falls back to a plain grid if the layout engine ever throws.
     const positions = useMemo(() => {
       try {
@@ -200,6 +207,25 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
         return gridPositions(visibleNodes)
       }
     }, [visibleNodes, visibleEdges])
+
+    // Drop manual positions when the layout is recomputed for a new graph, so
+    // stale drags do not linger over the fresh layout.
+    useEffect(() => {
+      setDragged(new Map())
+    }, [positions])
+
+    const onNodesChange = useCallback((changes: NodeChange[]) => {
+      setDragged((prev) => {
+        let next = prev
+        for (const c of changes) {
+          if (c.type === "position" && c.position) {
+            if (next === prev) next = new Map(prev)
+            next.set(c.id, c.position)
+          }
+        }
+        return next
+      })
+    }, [])
 
     // Hover focus: the hovered node plus its direct neighbours. Inert while a
     // path is highlighted so the two dimming systems never conflict.
@@ -314,9 +340,10 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     return (
       <div className="h-full w-full relative">
         <ReactFlow
-          nodes={toFlowNodes(visibleNodes, positions, highlightedId, path?.nodeIds ?? null, focusNodeIds)}
+          nodes={toFlowNodes(visibleNodes, positions, dragged, highlightedId, path?.nodeIds ?? null, focusNodeIds)}
           edges={toFlowEdges(visibleEdges, path?.edgeIds ?? null, focusNodeIds ? hoveredId : null)}
           onInit={setRfInstance}
+          onNodesChange={onNodesChange}
           onNodeClick={handleNodeClick}
           onNodeDoubleClick={handleNodeDoubleClick}
           onNodeMouseEnter={handleNodeMouseEnter}

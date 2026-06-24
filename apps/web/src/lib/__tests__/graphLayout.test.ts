@@ -9,12 +9,22 @@ function edge(id: string, sourceId: string, targetId: string, type: EdgeType): G
   return { id, sourceId, targetId, type }
 }
 
+// A simple call chain a → b → c → d → e.
+function chain(n: number): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const ids = Array.from({ length: n }, (_, i) => `n${i}`)
+  const nodes = ids.map((id) => node(id))
+  const edges = ids
+    .slice(1)
+    .map((id, i) => edge(`e${i}`, ids[i], id, "CALLS"))
+  return { nodes, edges }
+}
+
 describe("layoutGraph", () => {
   it("returns an empty map for an empty graph", () => {
     expect(layoutGraph([], []).size).toBe(0)
   })
 
-  it("assigns a coordinate to every node", () => {
+  it("assigns a finite coordinate to every node", () => {
     const nodes = [node("a"), node("b"), node("c")]
     const positions = layoutGraph(nodes, [])
     for (const n of nodes) {
@@ -25,16 +35,14 @@ describe("layoutGraph", () => {
     }
   })
 
-  it("ranks a CONTAINS parent above its children (smaller y)", () => {
-    const nodes = [node("repo", "repository"), node("child1"), node("child2")]
-    const edges = [
-      edge("e1", "repo", "child1", "CONTAINS"),
-      edge("e2", "repo", "child2", "CONTAINS"),
-    ]
+  it("scatters connected nodes across two dimensions, not a single line", () => {
+    const { nodes, edges } = chain(6)
     const positions = layoutGraph(nodes, edges)
-    const parentY = positions.get("repo")!.y
-    expect(positions.get("child1")!.y).toBeGreaterThan(parentY)
-    expect(positions.get("child2")!.y).toBeGreaterThan(parentY)
+    const xs = nodes.map((n) => Math.round(positions.get(n.id)!.x))
+    const ys = nodes.map((n) => Math.round(positions.get(n.id)!.y))
+    // Nodes must spread on both axes — neither collapsed onto one row nor one column.
+    expect(new Set(xs).size).toBeGreaterThan(1)
+    expect(new Set(ys).size).toBeGreaterThan(1)
   })
 
   it("places disconnected nodes too", () => {
@@ -45,12 +53,7 @@ describe("layoutGraph", () => {
   })
 
   it("is deterministic for the same input", () => {
-    const nodes = [node("repo", "repository"), node("a"), node("b")]
-    const edges = [
-      edge("e1", "repo", "a", "CONTAINS"),
-      edge("e2", "repo", "b", "CONTAINS"),
-      edge("e3", "a", "b", "IMPORTS"),
-    ]
+    const { nodes, edges } = chain(8)
     const first = layoutGraph(nodes, edges)
     const second = layoutGraph(nodes, edges)
     for (const [id, p] of first) {
