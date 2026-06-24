@@ -103,7 +103,14 @@ export class WebhookService {
       return { received: true }
     }
 
-    // Step 9: enqueue ingestion job
+    // Step 9: skip if the pushed commit is already ingested
+    if (payload.after && payload.after === repo.currentCommitHash) {
+      log.info("Push commit already ingested, skipping", { repositoryId, commit: payload.after })
+      await this.finalize(repositoryId, webhookEvent.id, "SKIPPED")
+      return { received: true }
+    }
+
+    // Step 10: enqueue ingestion job
     try {
       const job = await this.jobRepo.create(repositoryId)
       await ingestionQueue.add(

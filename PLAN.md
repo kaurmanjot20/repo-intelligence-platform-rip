@@ -95,7 +95,7 @@
       `/repositories/[id]/explore`) — currently consolidated; only do if structure matters.
 
 ### GitHub Integration
-- [ ] Webhook commit-hash dedup (skip re-ingest when no new commits).
+- [x] Webhook commit-hash dedup (skip re-ingest when pushed commit already ingested).
 
 ### Type / contract correctness
 - [x] `IChatRepo.getMessages()` now returns `id` (web rating UI relies on it).
