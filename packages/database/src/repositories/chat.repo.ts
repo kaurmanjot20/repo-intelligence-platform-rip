@@ -38,6 +38,7 @@ export class ChatRepo implements IChatRepo {
   }
 
   async getMessages(sessionId: string): Promise<Array<{
+    id: string
     role: 'user' | 'assistant'
     content: string
     references?: CopilotReference[]
@@ -48,6 +49,7 @@ export class ChatRepo implements IChatRepo {
       orderBy: { createdAt: 'asc' },
     })
     return rows.map(r => ({
+      id: r.id,
       role: r.role as 'user' | 'assistant',
       content: r.content,
       references: r.references

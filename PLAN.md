@@ -98,7 +98,7 @@
 - [ ] Webhook commit-hash dedup (skip re-ingest when no new commits).
 
 ### Type / contract correctness
-- [ ] `IChatRepo.getMessages()` missing `id` field (web rating UI expects it).
+- [x] `IChatRepo.getMessages()` now returns `id` (web rating UI relies on it).
 
 ### Testing
 - [ ] No tests for any `apps/api` module (orchestrator, copilot, pr-analysis, benchmark, webhook).

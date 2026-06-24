@@ -74,6 +74,7 @@ export interface IChatRepo {
     references?: CopilotReference[]
   ): Promise<{ id: string }>
   getMessages(sessionId: string): Promise<Array<{
+    id: string
     role: 'user' | 'assistant'
     content: string
     references?: CopilotReference[]
