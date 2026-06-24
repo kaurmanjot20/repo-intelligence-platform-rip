@@ -101,9 +101,13 @@
 - [x] `IChatRepo.getMessages()` now returns `id` (web rating UI relies on it).
 
 ### Testing
-- [ ] No tests for any `apps/api` module (orchestrator, copilot, pr-analysis, benchmark, webhook).
-- [ ] No web / frontend tests.
-- [ ] Core package tests exist: ai-client, graph-engine, ingestion, memory-engine, parser,
+- [x] `apps/api` jest setup + `WebhookService` tests (signature, idempotency, branch filter,
+      commit-hash dedup, ping/non-push handling).
+- [x] `DiffStrategy` tests in `@rip/ingestion` (changed/new/deleted/unchanged bucketing,
+      node_modules + unsupported-extension filtering).
+- [ ] Remaining `apps/api` modules still untested (orchestrator, copilot, pr-analysis, benchmark).
+- [ ] No web / frontend component tests yet (no RTL/jsdom setup).
+- [x] Core package tests exist: ai-client, graph-engine, ingestion, memory-engine, parser,
       retrieval-engine, shared-utils (crypto).
 
 ### Known-deferred (from notes.md — intentional, not bugs)
