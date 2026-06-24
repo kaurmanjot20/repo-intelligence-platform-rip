@@ -13,8 +13,9 @@ edges. GitHub webhooks keep the graph continuously in sync on every push.
 
 - **Code graph** — parses TS/JS, Python, and Java with tree-sitter and builds a graph of
   files, classes, functions, imports, and calls in Neo4j.
-- **Architecture Explorer** — interactive React Flow graph with node search, type
-  filtering, a metadata side panel (Imports / Contains / Used By), shortest-path
+- **Architecture Explorer** — interactive React Flow graph with a force-directed layout
+  that spreads nodes into draggable clusters, hover-to-focus highlighting, node search,
+  type filtering, a metadata side panel (Imports / Contains / Used By), shortest-path
   highlighting, and lazy drill-down for large graphs (>2000 nodes).
 - **Copilot** — retrieval-augmented Q&A over the codebase (graph traversal + pgvector
   semantic search + LLM), with citations and thumbs rating.
