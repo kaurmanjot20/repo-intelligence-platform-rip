@@ -11,11 +11,13 @@ import ReactFlow, {
   MiniMap,
   type Node,
   type Edge,
+  type NodeMouseHandler,
   type ReactFlowInstance,
   BackgroundVariant,
 } from "reactflow"
 import "reactflow/dist/style.css"
 import type { GraphNode, GraphEdge, NodeType } from "@rip/types"
+import { MetadataSidePanel } from "./MetadataSidePanel"
 
 const TYPE_COLORS: Record<NodeType, string> = {
   repository: "#6366f1",
@@ -83,6 +85,7 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
   function GraphExplorer({ nodes, edges, loading }, ref) {
     const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null)
     const [highlightedId, setHighlightedId] = useState<string | null>(null)
+    const [selectedId, setSelectedId] = useState<string | null>(null)
     const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useImperativeHandle(
@@ -101,6 +104,18 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
       }),
       [rfInstance]
     )
+
+    const handleNodeClick: NodeMouseHandler = (_, node) => setSelectedId(node.id)
+
+    const navigateTo = (nodeId: string) => {
+      setSelectedId(nodeId)
+      if (highlightTimer.current !== null) clearTimeout(highlightTimer.current)
+      setHighlightedId(nodeId)
+      rfInstance?.fitView({ nodes: [{ id: nodeId }], duration: 500, padding: 1.5 })
+      highlightTimer.current = setTimeout(() => setHighlightedId(null), 3000)
+    }
+
+    const selectedNode = selectedId ? nodes.find((n) => n.id === selectedId) ?? null : null
 
     if (loading) {
       return (
@@ -124,6 +139,8 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
           nodes={toFlowNodes(nodes, highlightedId)}
           edges={toFlowEdges(edges)}
           onInit={setRfInstance}
+          onNodeClick={handleNodeClick}
+          onPaneClick={() => setSelectedId(null)}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.1}
@@ -149,6 +166,16 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
               </span>
             ))}
         </div>
+
+        {selectedNode && (
+          <MetadataSidePanel
+            node={selectedNode}
+            nodes={nodes}
+            edges={edges}
+            onClose={() => setSelectedId(null)}
+            onNavigate={navigateTo}
+          />
+        )}
       </div>
     )
   }

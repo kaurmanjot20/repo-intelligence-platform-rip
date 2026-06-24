@@ -87,7 +87,7 @@
 - [x] `ENCRYPTION_KEY` documented in `.env.example` (with `openssl rand -hex 32` note).
 
 ### Frontend — Architecture Explorer
-- [ ] Metadata side panel (Imports / Contains / Used By) on node click — no `onNodeClick` today.
+- [x] Metadata side panel (Imports / Contains / Used By) on node click, with navigation.
 - [ ] Node search bar.
 - [ ] Interactive node filter bar (currently only a static legend).
 - [ ] Workspace stats / richer dashboard on home page.
