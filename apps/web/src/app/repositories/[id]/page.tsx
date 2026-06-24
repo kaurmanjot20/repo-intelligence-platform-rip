@@ -179,6 +179,7 @@ export default function RepositoryPage({ params }: { params: Promise<{ id: strin
           ) : (
             <GraphExplorer
               ref={graphRef}
+              repositoryId={id}
               nodes={nodes}
               edges={edges}
               loading={graphLoading}

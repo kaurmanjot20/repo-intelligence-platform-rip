@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { Search } from "lucide-react"
+import { Route, Search, X } from "lucide-react"
 import ReactFlow, {
   Background,
   Controls,
@@ -20,6 +20,9 @@ import ReactFlow, {
 import "reactflow/dist/style.css"
 import type { GraphNode, GraphEdge, NodeType } from "@rip/types"
 import { MetadataSidePanel } from "./MetadataSidePanel"
+import { api } from "../lib/api"
+
+const PATH_COLOR = "#22d3ee"
 
 const TYPE_COLORS: Record<NodeType, string> = {
   repository: "#6366f1",
@@ -35,42 +38,67 @@ const TYPE_COLORS: Record<NodeType, string> = {
   external_dependency: "#374151",
 }
 
-function toFlowNodes(graphNodes: GraphNode[], highlightedId: string | null): Node[] {
+function toFlowNodes(
+  graphNodes: GraphNode[],
+  highlightedId: string | null,
+  pathNodeIds: Set<string> | null
+): Node[] {
   const COLS = Math.ceil(Math.sqrt(graphNodes.length)) || 1
   const H_GAP = 220
   const V_GAP = 100
 
-  return graphNodes.map((n, i) => ({
-    id: n.id,
-    position: { x: (i % COLS) * H_GAP, y: Math.floor(i / COLS) * V_GAP },
-    data: { label: n.label, type: n.type },
-    style: {
-      background: TYPE_COLORS[n.type] ?? "#374151",
-      color: "#fff",
-      border: n.id === highlightedId ? "2px solid #f59e0b" : "none",
-      boxShadow: n.id === highlightedId ? "0 0 12px #f59e0b88" : "none",
-      borderRadius: 6,
-      fontSize: 11,
-      padding: "6px 10px",
-      maxWidth: 180,
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      transition: "border 0.2s, box-shadow 0.2s",
-    },
-  }))
+  return graphNodes.map((n, i) => {
+    const onPath = pathNodeIds?.has(n.id) ?? false
+    const dimmed = pathNodeIds !== null && !onPath
+    return {
+      id: n.id,
+      position: { x: (i % COLS) * H_GAP, y: Math.floor(i / COLS) * V_GAP },
+      data: { label: n.label, type: n.type },
+      style: {
+        background: TYPE_COLORS[n.type] ?? "#374151",
+        color: "#fff",
+        border: onPath
+          ? `2px solid ${PATH_COLOR}`
+          : n.id === highlightedId
+            ? "2px solid #f59e0b"
+            : "none",
+        boxShadow: onPath
+          ? `0 0 12px ${PATH_COLOR}aa`
+          : n.id === highlightedId
+            ? "0 0 12px #f59e0b88"
+            : "none",
+        opacity: dimmed ? 0.2 : 1,
+        borderRadius: 6,
+        fontSize: 11,
+        padding: "6px 10px",
+        maxWidth: 180,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        transition: "border 0.2s, box-shadow 0.2s, opacity 0.2s",
+      },
+    }
+  })
 }
 
-function toFlowEdges(graphEdges: GraphEdge[]): Edge[] {
-  return graphEdges.map((e) => ({
-    id: e.id,
-    source: e.sourceId,
-    target: e.targetId,
-    label: e.type,
-    style: { stroke: "#52525b", strokeWidth: 1 },
-    labelStyle: { fontSize: 9, fill: "#a1a1aa" },
-    animated: e.type === "IMPORTS",
-  }))
+function toFlowEdges(graphEdges: GraphEdge[], pathEdgeIds: Set<string> | null): Edge[] {
+  return graphEdges.map((e) => {
+    const onPath = pathEdgeIds?.has(e.id) ?? false
+    const dimmed = pathEdgeIds !== null && !onPath
+    return {
+      id: e.id,
+      source: e.sourceId,
+      target: e.targetId,
+      label: e.type,
+      style: {
+        stroke: onPath ? PATH_COLOR : "#52525b",
+        strokeWidth: onPath ? 2.5 : 1,
+        opacity: dimmed ? 0.1 : 1,
+      },
+      labelStyle: { fontSize: 9, fill: "#a1a1aa" },
+      animated: onPath || e.type === "IMPORTS",
+    }
+  })
 }
 
 export interface GraphExplorerHandle {
@@ -78,18 +106,28 @@ export interface GraphExplorerHandle {
 }
 
 interface Props {
+  repositoryId: string
   nodes: GraphNode[]
   edges: GraphEdge[]
   loading: boolean
 }
 
+interface PathState {
+  nodeIds: Set<string>
+  edgeIds: Set<string>
+  length: number
+}
+
 export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
-  function GraphExplorer({ nodes, edges, loading }, ref) {
+  function GraphExplorer({ repositoryId, nodes, edges, loading }, ref) {
     const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null)
     const [highlightedId, setHighlightedId] = useState<string | null>(null)
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [query, setQuery] = useState("")
     const [hiddenTypes, setHiddenTypes] = useState<Set<NodeType>>(new Set())
+    const [pathFrom, setPathFrom] = useState<string | null>(null)
+    const [path, setPath] = useState<PathState | null>(null)
+    const [pathError, setPathError] = useState<string | null>(null)
     const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const presentTypes = useMemo(
@@ -153,6 +191,36 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
       highlightTimer.current = setTimeout(() => setHighlightedId(null), 3000)
     }
 
+    const findPath = async (fromId: string, toId: string) => {
+      setPathError(null)
+      try {
+        const result = await api.graph.path(repositoryId, fromId, toId)
+        if (!result.nodes.length) {
+          setPath(null)
+          setPathError("No path found between the selected nodes.")
+          return
+        }
+        const nodeIds = new Set(result.nodes.map((n) => n.id))
+        const edgeIds = new Set(result.edges.map((e) => e.id))
+        setPath({ nodeIds, edgeIds, length: result.length })
+        setSelectedId(null)
+        rfInstance?.fitView({
+          nodes: result.nodes.map((n) => ({ id: n.id })),
+          duration: 500,
+          padding: 0.4,
+        })
+      } catch (e) {
+        setPath(null)
+        setPathError((e as Error).message)
+      }
+    }
+
+    const clearPath = () => {
+      setPath(null)
+      setPathFrom(null)
+      setPathError(null)
+    }
+
     const selectedNode = selectedId ? nodes.find((n) => n.id === selectedId) ?? null : null
 
     if (loading) {
@@ -174,8 +242,8 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     return (
       <div className="h-full w-full relative">
         <ReactFlow
-          nodes={toFlowNodes(visibleNodes, highlightedId)}
-          edges={toFlowEdges(visibleEdges)}
+          nodes={toFlowNodes(visibleNodes, highlightedId, path?.nodeIds ?? null)}
+          edges={toFlowEdges(visibleEdges, path?.edgeIds ?? null)}
           onInit={setRfInstance}
           onNodeClick={handleNodeClick}
           onPaneClick={() => setSelectedId(null)}
@@ -250,13 +318,38 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
           })}
         </div>
 
+        {/* Path mode banner */}
+        {(path || pathFrom || pathError) && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900/95 backdrop-blur text-xs">
+            <Route size={13} className="text-cyan-400 shrink-0" />
+            {path ? (
+              <span className="text-zinc-300">Path highlighted · {path.length} hops</span>
+            ) : pathError ? (
+              <span className="text-red-400">{pathError}</span>
+            ) : (
+              <span className="text-zinc-400">Start node set — pick a target and choose “Find path”.</span>
+            )}
+            <button
+              type="button"
+              onClick={clearPath}
+              className="text-zinc-500 hover:text-zinc-200 transition-colors"
+              aria-label="Clear path"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+
         {selectedNode && (
           <MetadataSidePanel
             node={selectedNode}
             nodes={nodes}
             edges={edges}
+            pathFrom={pathFrom}
             onClose={() => setSelectedId(null)}
             onNavigate={navigateTo}
+            onSetPathStart={(id) => { setPathFrom(id); setPath(null); setPathError(null) }}
+            onFindPath={(toId) => { if (pathFrom) void findPath(pathFrom, toId) }}
           />
         )}
       </div>

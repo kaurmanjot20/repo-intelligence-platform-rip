@@ -1,6 +1,6 @@
 "use client"
 import { useMemo, useState } from "react"
-import { X } from "lucide-react"
+import { Flag, Route, X } from "lucide-react"
 import type { GraphNode, GraphEdge, NodeType } from "@rip/types"
 
 type Tab = "imports" | "contains" | "usedBy"
@@ -14,11 +14,23 @@ interface Props {
   node: GraphNode
   nodes: GraphNode[]
   edges: GraphEdge[]
+  pathFrom: string | null
   onClose: () => void
   onNavigate: (nodeId: string) => void
+  onSetPathStart: (nodeId: string) => void
+  onFindPath: (toId: string) => void
 }
 
-export function MetadataSidePanel({ node, nodes, edges, onClose, onNavigate }: Props) {
+export function MetadataSidePanel({
+  node,
+  nodes,
+  edges,
+  pathFrom,
+  onClose,
+  onNavigate,
+  onSetPathStart,
+  onFindPath,
+}: Props) {
   const [tab, setTab] = useState<Tab>("imports")
 
   const nodeById = useMemo(() => {
@@ -120,6 +132,31 @@ export function MetadataSidePanel({ node, nodes, edges, onClose, onNavigate }: P
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div className="flex gap-2 px-3 py-2 border-t border-zinc-800">
+        {pathFrom === node.id ? (
+          <span className="flex items-center gap-1.5 text-xs text-cyan-400">
+            <Flag size={12} /> Path start
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onSetPathStart(node.id)}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+          >
+            <Flag size={12} /> Set as start
+          </button>
+        )}
+        {pathFrom && pathFrom !== node.id && (
+          <button
+            type="button"
+            onClick={() => onFindPath(node.id)}
+            className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors ml-auto"
+          >
+            <Route size={12} /> Find path here
+          </button>
         )}
       </div>
     </div>

@@ -110,4 +110,5 @@
 - [ ] Authentication / JWT (currently `local-user` placeholder).
 - [ ] Lazy graph loading / drill-down into subtrees for large graphs (>2000 nodes load
       root-level only today).
-- [ ] Graph path highlighting in the UI (data available via `/graph/path`, UI not built).
+- [x] Graph path highlighting in the UI (pick start + target from the side panel, path
+      highlighted via `/graph/path`).

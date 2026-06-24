@@ -3,6 +3,7 @@ import type {
   IngestionJob,
   GraphNode,
   GraphEdge,
+  GraphPath,
   GraphSummary,
   NodeType,
   CopilotAnswer,
@@ -99,6 +100,10 @@ export const api = {
       return req<GraphNode[]>(`/repositories/${repoId}/graph/nodes${qs}`)
     },
     edges: (repoId: string) => req<GraphEdge[]>(`/repositories/${repoId}/graph/edges`),
+    path: (repoId: string, from: string, to: string) =>
+      req<GraphPath>(
+        `/repositories/${repoId}/graph/path?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+      ),
   },
   copilot: {
     ask: (repositoryId: string, question: string, sessionId?: string) =>
