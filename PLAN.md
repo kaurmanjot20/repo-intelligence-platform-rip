@@ -88,8 +88,8 @@
 
 ### Frontend — Architecture Explorer
 - [x] Metadata side panel (Imports / Contains / Used By) on node click, with navigation.
-- [ ] Node search bar.
-- [ ] Interactive node filter bar (currently only a static legend).
+- [x] Node search bar (live results, click to focus).
+- [x] Interactive node filter bar (legend toggles type visibility).
 - [ ] Workspace stats / richer dashboard on home page.
 - [ ] (Optional) decomposed routes from the original spec (`/repositories/new`,
       `/repositories/[id]/explore`) — currently consolidated; only do if structure matters.

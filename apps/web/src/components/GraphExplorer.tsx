@@ -2,9 +2,11 @@
 import {
   forwardRef,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react"
+import { Search } from "lucide-react"
 import ReactFlow, {
   Background,
   Controls,
@@ -86,7 +88,43 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null)
     const [highlightedId, setHighlightedId] = useState<string | null>(null)
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [query, setQuery] = useState("")
+    const [hiddenTypes, setHiddenTypes] = useState<Set<NodeType>>(new Set())
     const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const presentTypes = useMemo(
+      () =>
+        (Object.keys(TYPE_COLORS) as NodeType[]).filter((t) =>
+          nodes.some((n) => n.type === t)
+        ),
+      [nodes]
+    )
+
+    const visibleNodes = useMemo(
+      () => nodes.filter((n) => !hiddenTypes.has(n.type)),
+      [nodes, hiddenTypes]
+    )
+
+    const visibleEdges = useMemo(() => {
+      const ids = new Set(visibleNodes.map((n) => n.id))
+      return edges.filter((e) => ids.has(e.sourceId) && ids.has(e.targetId))
+    }, [edges, visibleNodes])
+
+    const searchResults = useMemo(() => {
+      const q = query.trim().toLowerCase()
+      if (!q) return []
+      return visibleNodes
+        .filter((n) => n.label.toLowerCase().includes(q))
+        .slice(0, 8)
+    }, [query, visibleNodes])
+
+    const toggleType = (type: NodeType) =>
+      setHiddenTypes((prev) => {
+        const next = new Set(prev)
+        if (next.has(type)) next.delete(type)
+        else next.add(type)
+        return next
+      })
 
     useImperativeHandle(
       ref,
@@ -136,8 +174,8 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     return (
       <div className="h-full w-full relative">
         <ReactFlow
-          nodes={toFlowNodes(nodes, highlightedId)}
-          edges={toFlowEdges(edges)}
+          nodes={toFlowNodes(visibleNodes, highlightedId)}
+          edges={toFlowEdges(visibleEdges)}
           onInit={setRfInstance}
           onNodeClick={handleNodeClick}
           onPaneClick={() => setSelectedId(null)}
@@ -155,16 +193,61 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
           />
         </ReactFlow>
 
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 max-w-xs pointer-events-none">
-          {(Object.entries(TYPE_COLORS) as [NodeType, string][])
-            .filter(([type]) => nodes.some((n) => n.type === type))
-            .map(([type, color]) => (
-              <span key={type} className="flex items-center gap-1 text-xs text-zinc-400">
-                <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+        {/* Search */}
+        <div className="absolute top-4 left-4 w-64">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900/95 backdrop-blur">
+            <Search size={14} className="text-zinc-500 shrink-0" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search nodes…"
+              className="flex-1 bg-transparent text-xs text-zinc-200 placeholder:text-zinc-600 outline-none"
+            />
+          </div>
+          {searchResults.length > 0 && (
+            <ul className="mt-1 rounded-lg border border-zinc-700 bg-zinc-900/95 backdrop-blur overflow-hidden">
+              {searchResults.map((n) => (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigateTo(n.id)
+                      setQuery("")
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-zinc-800 transition-colors"
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: TYPE_COLORS[n.type] ?? "#374151" }}
+                    />
+                    <span className="flex-1 min-w-0 truncate text-xs text-zinc-300">{n.label}</span>
+                    <span className="text-[10px] text-zinc-600 shrink-0">{n.type.replace(/_/g, " ")}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Legend / type filter */}
+        <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 max-w-xs">
+          {presentTypes.map((type) => {
+            const hidden = hiddenTypes.has(type)
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => toggleType(type)}
+                title={hidden ? `Show ${type}` : `Hide ${type}`}
+                className={`flex items-center gap-1 text-xs transition-opacity ${
+                  hidden ? "text-zinc-600 opacity-50 line-through" : "text-zinc-400"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: TYPE_COLORS[type] }} />
                 {type.replace(/_/g, " ")}
-              </span>
-            ))}
+              </button>
+            )
+          })}
         </div>
 
         {selectedNode && (
