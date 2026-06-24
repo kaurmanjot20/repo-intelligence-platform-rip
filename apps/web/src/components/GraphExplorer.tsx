@@ -21,8 +21,12 @@ import "reactflow/dist/style.css"
 import type { GraphNode, GraphEdge, NodeType } from "@rip/types"
 import { MetadataSidePanel } from "./MetadataSidePanel"
 import { api } from "../lib/api"
+import { layoutGraph, type XYPosition } from "../lib/graphLayout"
 
 const PATH_COLOR = "#22d3ee"
+const STRUCTURE_EDGE_COLOR = "#3f3f46"
+const DEPENDENCY_EDGE_COLOR = "#52525b"
+const DIM_OPACITY = 0.15
 
 const TYPE_COLORS: Record<NodeType, string> = {
   repository: "#6366f1",
@@ -38,21 +42,36 @@ const TYPE_COLORS: Record<NodeType, string> = {
   external_dependency: "#374151",
 }
 
-function toFlowNodes(
-  graphNodes: GraphNode[],
-  highlightedId: string | null,
-  pathNodeIds: Set<string> | null
-): Node[] {
+// Fallback used only if the layout engine throws, so the graph never blanks out.
+function gridPositions(graphNodes: GraphNode[]): Map<string, XYPosition> {
   const COLS = Math.ceil(Math.sqrt(graphNodes.length)) || 1
   const H_GAP = 220
   const V_GAP = 100
+  return new Map(
+    graphNodes.map((n, i) => [
+      n.id,
+      { x: (i % COLS) * H_GAP, y: Math.floor(i / COLS) * V_GAP },
+    ])
+  )
+}
 
-  return graphNodes.map((n, i) => {
+function toFlowNodes(
+  graphNodes: GraphNode[],
+  positions: Map<string, XYPosition>,
+  highlightedId: string | null,
+  pathNodeIds: Set<string> | null,
+  focusNodeIds: Set<string> | null
+): Node[] {
+  return graphNodes.map((n) => {
     const onPath = pathNodeIds?.has(n.id) ?? false
-    const dimmed = pathNodeIds !== null && !onPath
+    // Path dimming takes precedence; hover focus only applies when no path is shown.
+    const dimmed =
+      pathNodeIds !== null
+        ? !onPath
+        : focusNodeIds !== null && !focusNodeIds.has(n.id)
     return {
       id: n.id,
-      position: { x: (i % COLS) * H_GAP, y: Math.floor(i / COLS) * V_GAP },
+      position: positions.get(n.id) ?? { x: 0, y: 0 },
       data: { label: n.label, type: n.type },
       style: {
         background: TYPE_COLORS[n.type] ?? "#374151",
@@ -81,22 +100,38 @@ function toFlowNodes(
   })
 }
 
-function toFlowEdges(graphEdges: GraphEdge[], pathEdgeIds: Set<string> | null): Edge[] {
+function toFlowEdges(
+  graphEdges: GraphEdge[],
+  pathEdgeIds: Set<string> | null,
+  hoveredId: string | null
+): Edge[] {
   return graphEdges.map((e) => {
     const onPath = pathEdgeIds?.has(e.id) ?? false
-    const dimmed = pathEdgeIds !== null && !onPath
+    // CONTAINS is the structural scaffolding — render it quietly so dependency
+    // edges (imports/calls/…) stand out as the meaningful relationships.
+    const structural = e.type === "CONTAINS"
+    const touchesHover =
+      hoveredId !== null && (e.sourceId === hoveredId || e.targetId === hoveredId)
+    const dimmed =
+      pathEdgeIds !== null
+        ? !onPath
+        : hoveredId !== null && !touchesHover
     return {
       id: e.id,
       source: e.sourceId,
       target: e.targetId,
-      label: e.type,
+      label: structural ? undefined : e.type,
       style: {
-        stroke: onPath ? PATH_COLOR : "#52525b",
-        strokeWidth: onPath ? 2.5 : 1,
-        opacity: dimmed ? 0.1 : 1,
+        stroke: onPath
+          ? PATH_COLOR
+          : structural
+            ? STRUCTURE_EDGE_COLOR
+            : DEPENDENCY_EDGE_COLOR,
+        strokeWidth: onPath ? 2.5 : structural ? 1 : 1.5,
+        opacity: dimmed ? DIM_OPACITY : structural ? 0.6 : 1,
       },
       labelStyle: { fontSize: 9, fill: "#a1a1aa" },
-      animated: onPath || e.type === "IMPORTS",
+      animated: onPath || (!structural && e.type === "IMPORTS"),
     }
   })
 }
@@ -129,6 +164,7 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
   ) {
     const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null)
     const [highlightedId, setHighlightedId] = useState<string | null>(null)
+    const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [query, setQuery] = useState("")
     const [hiddenTypes, setHiddenTypes] = useState<Set<NodeType>>(new Set())
@@ -154,6 +190,28 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
       const ids = new Set(visibleNodes.map((n) => n.id))
       return edges.filter((e) => ids.has(e.sourceId) && ids.has(e.targetId))
     }, [edges, visibleNodes])
+
+    // Hierarchical layout, recomputed only when the visible graph changes.
+    // Falls back to a plain grid if the layout engine ever throws.
+    const positions = useMemo(() => {
+      try {
+        return layoutGraph(visibleNodes, visibleEdges)
+      } catch {
+        return gridPositions(visibleNodes)
+      }
+    }, [visibleNodes, visibleEdges])
+
+    // Hover focus: the hovered node plus its direct neighbours. Inert while a
+    // path is highlighted so the two dimming systems never conflict.
+    const focusNodeIds = useMemo(() => {
+      if (!hoveredId || path) return null
+      const set = new Set<string>([hoveredId])
+      for (const e of visibleEdges) {
+        if (e.sourceId === hoveredId) set.add(e.targetId)
+        if (e.targetId === hoveredId) set.add(e.sourceId)
+      }
+      return set
+    }, [hoveredId, path, visibleEdges])
 
     const searchResults = useMemo(() => {
       const q = query.trim().toLowerCase()
@@ -189,6 +247,9 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     )
 
     const handleNodeClick: NodeMouseHandler = (_, node) => setSelectedId(node.id)
+
+    const handleNodeMouseEnter: NodeMouseHandler = (_, node) => setHoveredId(node.id)
+    const handleNodeMouseLeave: NodeMouseHandler = () => setHoveredId(null)
 
     const handleNodeDoubleClick: NodeMouseHandler = (_, node) => {
       if (lazy && onExpand) onExpand(node.id)
@@ -253,11 +314,13 @@ export const GraphExplorer = forwardRef<GraphExplorerHandle, Props>(
     return (
       <div className="h-full w-full relative">
         <ReactFlow
-          nodes={toFlowNodes(visibleNodes, highlightedId, path?.nodeIds ?? null)}
-          edges={toFlowEdges(visibleEdges, path?.edgeIds ?? null)}
+          nodes={toFlowNodes(visibleNodes, positions, highlightedId, path?.nodeIds ?? null, focusNodeIds)}
+          edges={toFlowEdges(visibleEdges, path?.edgeIds ?? null, focusNodeIds ? hoveredId : null)}
           onInit={setRfInstance}
           onNodeClick={handleNodeClick}
           onNodeDoubleClick={handleNodeDoubleClick}
+          onNodeMouseEnter={handleNodeMouseEnter}
+          onNodeMouseLeave={handleNodeMouseLeave}
           onPaneClick={() => setSelectedId(null)}
           fitView
           fitViewOptions={{ padding: 0.2 }}
